@@ -8,13 +8,14 @@ datasource db {
 
 model Staff {
   id           String       @id @default(uuid())
+
   staffNumber  String       @unique
   firstName    String
   lastName     String
   department   String
 
-  qrToken      String       @unique
-  qrImage      String
+  qrCodeId     String       @unique
+  isActive     Boolean      @default(true)
 
   attendances  Attendance[]
 
@@ -23,19 +24,19 @@ model Staff {
 }
 
 model Attendance {
-  id          String     @id @default(uuid())
+  id         String   @id @default(uuid())
 
-  staffId     String
+  staffId    String
 
-  mealDate    DateTime
+  mealDate   DateTime
+  scannedAt  DateTime @default(now())
 
-  scannedAt   DateTime   @default(now())
+  staff      Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
-  staff        Staff      @relation(fields: [staffId], references: [id])
-
-  createdAt    DateTime   @default(now())
-
-  @@index([mealDate])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([staffId])
+  @@index([mealDate])
+  @@index([scannedAt])
 }

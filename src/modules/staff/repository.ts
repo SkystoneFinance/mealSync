@@ -1,47 +1,59 @@
-// import { prisma } from "../../config/prisma";
+import { prisma } from "../../config/prisma";
+import type { CreateStaffDto, UpdateStaffDto } from "./types";
 
-// export class StaffRepository {
-//   create(data: {
-//     fullName: string;
-//     staffId: string;
-//     department: string;
-//     qrCode: string;
-//   }) {
-//     return prisma.staff.create({
-//       data,
-//     });
-//   }
+export class StaffRepository {
+  async create(
+    data: CreateStaffDto & {
+      qrCodeId: string;
+      qrImage: string;
+    },
+  ) {
+    return prisma.staff.create({
+      data,
+    });
+  }
 
-//   findAll() {
-//     return prisma.staff.findMany({
-//       orderBy: {
-//         createdAt: "desc",
-//       },
-//     });
-//   }
+  async findAll() {
+    return prisma.staff.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+  }
 
-//   findById(id: string) {
-//     return prisma.staff.findUnique({
-//       where: { id },
-//     });
-//   }
+  async findById(id: string) {
+    return prisma.staff.findUnique({
+      where: {
+        id,
+      },
+    });
+  }
 
-//   findByStaffId(staffId: string) {
-//     return prisma.staff.findUnique({
-//       where: { staffId },
-//     });
-//   }
+  async findByStaffNumber(staffNumber: string) {
+    return prisma.staff.findUnique({
+      where: {
+        staffNumber,
+      },
+    });
+  }
 
-//   update(id: string, data: object) {
-//     return prisma.staff.update({
-//       where: { id },
-//       data,
-//     });
-//   }
+  async update(
+    id: string,
+    data: UpdateStaffDto,
+  ) {
+    return prisma.staff.update({
+      where: {
+        id,
+      },
+      data,
+    });
+  }
 
-//   delete(id: string) {
-//     return prisma.staff.delete({
-//       where: { id },
-//     });
-//   }
-// }
+  async delete(id: string) {
+    return prisma.staff.delete({
+      where: {
+        id,
+      },
+    });
+  }
+}

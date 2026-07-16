@@ -1,10 +1,13 @@
 export interface CreateStaffDto {
-  fullName: string;
-  staffId: string;
+  staffNumber: string;
+  firstName: string;
+  lastName: string;
   department: string;
 }
 
 export interface UpdateStaffDto {
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   department?: string;
+  isActive?: boolean;
 }
