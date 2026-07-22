@@ -1,5 +1,5 @@
 import app from "./app";
-import register from "./register";
+import { register } from "./register";
 
 const start = async () => {
   try {
@@ -13,7 +13,9 @@ const start = async () => {
       host: HOST,
     });
 
-    console.log(`🚀 MealSync Backend running on http://localhost:${PORT}`);
+    console.log(
+      `🚀 MealSync Backend running on http://localhost:${PORT}`,
+    );
   } catch (error) {
     app.log.error(error);
     process.exit(1);

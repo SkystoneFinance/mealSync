@@ -20,5 +20,7 @@ export async function register(app: FastifyInstance) {
 
   await app.register(errorHandler);
   
-  await app.register(staffModule);
+  await app.register(staffModule, {
+    prefix: "api/v1",
+  });
 }
