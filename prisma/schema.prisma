@@ -16,6 +16,7 @@ model Staff {
   department   String
 
   qrCodeId     String       @unique
+  qrImage      String
   isActive     Boolean      @default(true)
 
   attendances  Attendance[]

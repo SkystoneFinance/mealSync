@@ -18,13 +18,12 @@
       }
 
       const qrCodeId = uuid();
-
+      const qrImage = await QRCode.toDataURL(qrCodeId);
       const staff = await this.repository.create({
         ...data,
         qrCodeId,
+        qrImage,
       });
-
-      const qrImage = await QRCode.toDataURL(qrCodeId);
 
       return {
         staff,
