@@ -9,7 +9,7 @@ export async function validate<T>(
     return schema.parse(data);
   } catch (error) {
     if (error instanceof ZodError) {
-      throw new Error(error.errors[0].message);
+      throw new Error(error.issues[0].message);
     }
 
     throw error;

@@ -1,7 +1,24 @@
-ApiResponse<T>
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
 
-ApiError
+export interface ApiError {
+  success: false;
+  message: string;
+  statusCode: number;
+}
 
-Pagination
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 
-PaginatedResponse<T>
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data: T[];
+  pagination: Pagination;
+}

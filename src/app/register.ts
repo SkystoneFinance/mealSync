@@ -4,15 +4,12 @@ import swaggerPlugin from "../plugins/swagger";
 import prismaPlugin from "../plugins/prisma";
 import socketPlugin from "../plugins/socket";
 import staffModule from "../modules/staff";
-import reportModule from "../modules/reports";
 import attendanceModule from "../modules/attendance";
-import dashboardModule from "../modules/dashboard";
 import sensiblePlugin from "../plugins/sensible";
 import errorHandler from "../plugins/error-handler";
 
 export async function register(app: FastifyInstance) {
   await app.register(corsPlugin);
-
   await app.register(swaggerPlugin);
 
   await app.register(prismaPlugin);
@@ -28,13 +25,6 @@ export async function register(app: FastifyInstance) {
   });
 
   await app.register(attendanceModule, {
-  prefix: "/api/v1",
-});
-
-  await app.register(dashboardModule, {
-  prefix: "/api/v1",
-});
-  await app.register(reportModule, {
   prefix: "/api/v1",
 });
 }
