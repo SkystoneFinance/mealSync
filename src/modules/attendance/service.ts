@@ -2,6 +2,7 @@ import { AppError } from "../../utils/error";
 
 import { AttendanceRepository } from "./repository";
 import type { ScanAttendanceDto } from "./types";
+import { getSocket } from "../../services/socket";
 
 export class AttendanceService {
   private readonly repository = new AttendanceRepository();
@@ -35,6 +36,24 @@ export class AttendanceService {
 
     // Socket.IO event will be emitted here later
     // app.io.emit("attendance:new", attendance);
+
+const io = getSocket();
+
+io.emit("attendance:new", {
+  attendanceId: attendance.id,
+
+  staff: {
+    id: staff.id,
+    staffNumber: staff.staffNumber,
+    firstName: staff.firstName,
+    lastName: staff.lastName,
+    department: staff.department,
+  },
+
+  scannedAt: attendance.scannedAt,
+});
+
+return attendance;
 
     return attendance;
   }

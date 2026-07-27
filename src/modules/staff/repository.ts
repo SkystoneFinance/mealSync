@@ -49,6 +49,38 @@ export class StaffRepository {
     });
   }
 
+  async countTotal() {
+  return prisma.staff.count();
+}
+
+async countInactive() {
+  return prisma.staff.count({
+    where: {
+      isActive: false,
+    },
+  });
+}
+
+async countActive() {
+  return prisma.staff.count({
+    where: {
+      isActive: true,
+    },
+  });
+}
+
+async countByDepartment() {
+  return prisma.staff.groupBy({
+    by: ["department"],
+    _count: {
+      department: true,
+    },
+    orderBy: {
+      department: "asc",
+    },
+  });
+}
+
   async delete(id: string) {
     return prisma.staff.delete({
       where: {
