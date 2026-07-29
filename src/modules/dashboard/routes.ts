@@ -13,12 +13,12 @@ export async function dashboardRoutes(
   );
 
   app.get(
-    "/recent",
+    "/recent-attendance",
     controller.getRecentAttendance.bind(controller),
   );
 
   app.get(
-    "/departments",
+    "/department-summary",
     controller.getDepartmentSummary.bind(controller),
   );
 }
