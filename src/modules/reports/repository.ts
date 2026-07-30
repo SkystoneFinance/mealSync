@@ -127,4 +127,80 @@ export class ReportRepository {
       }),
     );
   }
+
+  async getStaffSummary(
+  period: "today" | "weekly" | "monthly",
+) {
+
+  const today = new Date();
+
+  let from: Date;
+  let to: Date;
+
+  switch (period) {
+
+    case "today":
+      from = startOfDay(today);
+      to = endOfDay(today);
+      break;
+
+    case "weekly":
+      from = startOfWeek(today);
+      to = endOfWeek(today);
+      break;
+
+    default:
+      from = startOfMonth(today);
+      to = endOfMonth(today);
+
+  }
+
+  const staff = await prisma.staff.findMany({
+
+    where:{
+      isActive:true
+    },
+
+    include:{
+      attendances:{
+        where:{
+          mealDate:{
+            gte:from,
+            lte:to
+          }
+        },
+
+        orderBy:{
+          mealDate:"desc"
+        }
+
+      }
+    }
+
+  });
+
+  return staff.map((person)=>({
+
+    staffId:person.id,
+
+    staffNumber:person.staffNumber,
+
+    name:`${person.firstName} ${person.lastName}`,
+
+    department:person.department,
+
+    mealCount:person.attendances.length,
+
+    lastMeal:
+
+      person.attendances.length
+
+      ? person.attendances[0].mealDate
+
+      : null
+
+  }));
+
+}
+  
 }

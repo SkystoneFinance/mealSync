@@ -18,4 +18,12 @@ export class ReportService {
   async getDepartmentReport() {
     return this.repository.getDepartmentReport();
   }
+
+  async getStaffSummary(
+  period:"today"|"weekly"|"monthly"
+  ){
+
+  return this.repository.getStaffSummary(period);
+  }
+
 }

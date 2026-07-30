@@ -41,4 +41,35 @@ export class ReportController {
 
     return reply.code(200).send(report);
   }
+
+  async staffSummary(
+ request:FastifyRequest,
+ reply:FastifyReply
+){
+
+ const {period="today"}=request.query as {
+
+   period?:
+   "today"|
+   "weekly"|
+   "monthly";
+
+ };
+
+
+  const data=
+
+  await service.getStaffSummary(period);
+
+
+  return reply.send({
+
+    success:true,
+
+    data
+
+  });
+
+  }
+
 }
