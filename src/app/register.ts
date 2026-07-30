@@ -4,6 +4,7 @@ import swaggerPlugin from "../plugins/swagger";
 import prismaPlugin from "../plugins/prisma";
 import socketPlugin from "../plugins/socket";
 import staffModule from "../modules/staff";
+import reportModule from "../modules/reports";
 import dashboardModule from "../modules/dashboard";
 import attendanceModule from "../modules/attendance";
 import sensiblePlugin from "../plugins/sensible";
@@ -29,6 +30,9 @@ export async function register(app: FastifyInstance) {
   prefix: "/api/v1",
 });
   await app.register(dashboardModule, {
+  prefix: "/api/v1",
+});
+  await app.register(reportModule, {
   prefix: "/api/v1",
 });
 }
