@@ -72,4 +72,41 @@ export class ReportController {
 
   }
 
+  async export(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+
+
+  const {
+    period = "weekly",
+  } = request.query as {
+    period?:
+    "today" |
+    "weekly" |
+    "monthly";
+  };
+
+
+  const file =
+    await service.exportReport(period);
+
+
+
+  reply.header(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+
+
+  reply.header(
+    "Content-Disposition",
+    `attachment; filename=MealSync-${period}.xlsx`
+  );
+
+
+  return reply.send(file);
+
+}
+
 }

@@ -33,4 +33,9 @@ export async function reportRoutes(
 controller.staffSummary.bind(controller)
 
 );
+
+  app.get(
+    "/export",
+    controller.export.bind(controller),
+  );
 }

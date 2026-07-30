@@ -6,6 +6,7 @@ import {
   startOfMonth,
   endOfMonth,
 } from "date-fns";
+import ExcelJS from "exceljs";
 
 import { prisma } from "../../config/prisma";
 
@@ -200,6 +201,79 @@ export class ReportRepository {
       : null
 
   }));
+
+}
+
+async exportReport(
+ period:
+ "today" |
+ "weekly" |
+ "monthly"
+){
+
+
+const data =
+await this.getStaffSummary(period);
+
+
+
+const workbook =
+new ExcelJS.Workbook();
+
+
+
+const sheet =
+workbook.addWorksheet(
+"Meal Report"
+);
+
+
+
+sheet.columns = [
+
+{
+header:"Staff Number",
+key:"staffNumber",
+width:20
+},
+
+{
+header:"Name",
+key:"name",
+width:25
+},
+
+{
+header:"Department",
+key:"department",
+width:20
+},
+
+{
+header:"Meals Taken",
+key:"mealCount",
+width:15
+},
+
+{
+header:"Last Meal",
+key:"lastMeal",
+width:25
+}
+
+];
+
+
+
+data.forEach((person)=>{
+
+sheet.addRow(person);
+
+});
+
+
+
+return workbook.xlsx.writeBuffer();
 
 }
   

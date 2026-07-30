@@ -26,4 +26,15 @@ export class ReportService {
   return this.repository.getStaffSummary(period);
   }
 
+  async exportReport(
+ period:
+ "today" |
+ "weekly" |
+ "monthly"
+){
+
+ return this.repository.exportReport(period);
+
+}
+
 }
