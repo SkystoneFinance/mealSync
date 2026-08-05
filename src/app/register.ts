@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import multipart from "@fastify/multipart";
 import corsPlugin from "../plugins/cors";
 import swaggerPlugin from "../plugins/swagger";
 import prismaPlugin from "../plugins/prisma";

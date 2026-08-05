@@ -12,6 +12,12 @@ export async function staffRoutes(
     controller.create.bind(controller),
   );
 
+  // ⭐ NEW IMPORT ROUTE
+  app.post(
+    "/import",
+    controller.importStaff.bind(controller),
+  );
+
   app.get(
     "/",
     controller.findAll.bind(controller),

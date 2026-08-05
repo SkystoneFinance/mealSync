@@ -1,4 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { MultipartFile } from "@fastify/multipart";
 
 import { StaffService } from "./service";
 import type { CreateStaffDto, UpdateStaffDto } from "./types";
@@ -91,4 +92,40 @@ export class StaffController {
       message: "Staff deleted successfully.",
     });
   }
+
+  async importStaff(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+
+  const file =
+    await request.file();
+
+  if (!file) {
+
+    return reply.status(400).send({
+
+      success:false,
+
+      message:"Please upload an Excel file."
+
+    });
+
+  }
+
+  const result =
+    await this.service.importStaff(file);
+
+  return reply.send({
+
+    success:true,
+
+    message:`${result.imported} staff imported successfully.`,
+
+    data:result
+
+  });
+
+}
+
 }
