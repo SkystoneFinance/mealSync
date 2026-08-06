@@ -97,35 +97,31 @@ export class StaffController {
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
+  try {
+    const file = await request.file();
 
-  const file =
-    await request.file();
+    if (!file) {
+      return reply.status(400).send({
+        success: false,
+        message: "Please upload an Excel file.",
+      });
+    }
 
-  if (!file) {
+    const result = await this.service.importStaff(file);
 
-    return reply.status(400).send({
-
-      success:false,
-
-      message:"Please upload an Excel file."
-
+    return reply.send({
+      success: true,
+      message: `${result.imported} staff imported successfully.`,
+      data: result,
     });
+  } catch (error) {
+    console.error(error);
 
+    return reply.status(500).send({
+      success: false,
+      message: String(error),
+    });
   }
-
-  const result =
-    await this.service.importStaff(file);
-
-  return reply.send({
-
-    success:true,
-
-    message:`${result.imported} staff imported successfully.`,
-
-    data:result
-
-  });
-
 }
 
 }

@@ -14,8 +14,9 @@ import errorHandler from "../plugins/error-handler";
 export async function register(app: FastifyInstance) {
   await app.register(corsPlugin);
   await app.register(swaggerPlugin);
-
   await app.register(prismaPlugin);
+
+  await app.register(multipart);
 
   await app.register(socketPlugin);
 
