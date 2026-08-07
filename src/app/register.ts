@@ -7,14 +7,17 @@ import socketPlugin from "../plugins/socket";
 import staffModule from "../modules/staff";
 import reportModule from "../modules/reports";
 import dashboardModule from "../modules/dashboard";
+import authModule from "../modules/auth";
 import attendanceModule from "../modules/attendance";
 import sensiblePlugin from "../plugins/sensible";
 import errorHandler from "../plugins/error-handler";
+import jwtPlugin from "../plugins/jwt";
 
 export async function register(app: FastifyInstance) {
   await app.register(corsPlugin);
   await app.register(swaggerPlugin);
   await app.register(prismaPlugin);
+  await app.register(jwtPlugin);
 
   await app.register(multipart);
 
@@ -35,6 +38,9 @@ export async function register(app: FastifyInstance) {
   prefix: "/api/v1",
 });
   await app.register(reportModule, {
+  prefix: "/api/v1",
+});
+await app.register(authModule, {
   prefix: "/api/v1",
 });
 }

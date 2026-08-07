@@ -7,6 +7,13 @@ datasource db {
   url = env("DATABASE_URL") 
 }
 
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+
 model Staff {
   id           String       @id @default(uuid())
 
@@ -20,6 +27,8 @@ model Staff {
   isActive     Boolean      @default(true)
 
   attendances  Attendance[]
+
+  user User?
 
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -41,4 +50,25 @@ model Attendance {
   @@index([staffId])
   @@index([mealDate])
   @@index([scannedAt])
+}
+
+model User {
+
+  id         String @id @default(uuid())
+
+  email      String @unique
+
+  password   String
+
+  role       Role @default(USER)
+
+  isActive   Boolean @default(true)
+
+  staffId    String?  @unique
+
+  staff      Staff? @relation(fields: [staffId], references: [id])
+
+  createdAt  DateTime @default(now())
+
+  updatedAt  DateTime @updatedAt
 }
