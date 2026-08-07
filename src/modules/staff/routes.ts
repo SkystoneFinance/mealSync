@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
 import { StaffController } from "./controller";
+import { authenticate } from "../../middleware/role";
 
 const controller = new StaffController();
 
@@ -22,6 +23,14 @@ export async function staffRoutes(
     "/",
     controller.findAll.bind(controller),
   );
+
+  app.get(
+  "/me",
+  {
+    preHandler: [authenticate],
+  },
+  controller.me.bind(controller),
+);
 
   app.get(
     "/:id",

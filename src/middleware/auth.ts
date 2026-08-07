@@ -14,7 +14,7 @@ await request.jwtVerify();
 
 }catch{
 
-reply.code(401).send({
+return reply.code(401).send({
 
 success:false,
 

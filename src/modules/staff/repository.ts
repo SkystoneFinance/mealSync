@@ -21,6 +21,24 @@ export class StaffRepository {
     });
   }
 
+  async findByUserId(userId: string) {
+
+  const user = await prisma.user.findUnique({
+
+    where: {
+      id: userId,
+    },
+
+    include: {
+      staff: true,
+    },
+
+  });
+
+  return user?.staff;
+
+}
+
   async findById(id: string) {
     return prisma.staff.findUnique({
       where: {

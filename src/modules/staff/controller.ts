@@ -79,6 +79,26 @@ export class StaffController {
     });
   }
 
+  async me(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+
+  const staff =
+    await this.service.getMyProfile(
+      request.user.id,
+    );
+
+  return reply.send({
+
+    success: true,
+
+    data: staff,
+
+  });
+
+}
+
   async delete(
     request: FastifyRequest<{
       Params: { id: string };

@@ -183,4 +183,22 @@ export class StaffService {
       skipped,
     };
   }
+
+  async getMyProfile(userId: string) {
+
+  const staff =
+    await this.repository.findByUserId(userId);
+
+  if (!staff) {
+
+    throw new AppError(
+      404,
+      "Staff profile not found.",
+    );
+
+  }
+
+  return staff;
+
+}
 }
