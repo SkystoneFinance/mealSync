@@ -7,6 +7,9 @@ import socketPlugin from "../plugins/socket";
 import staffModule from "../modules/staff";
 import reportModule from "../modules/reports";
 import dashboardModule from "../modules/dashboard";
+import {
+  foodOptionRoutes,
+} from "../modules/foodOption";
 import authModule from "../modules/auth";
 import attendanceModule from "../modules/attendance";
 import sensiblePlugin from "../plugins/sensible";
@@ -40,6 +43,12 @@ export async function register(app: FastifyInstance) {
   await app.register(reportModule, {
   prefix: "/api/v1",
 });
+await app.register(
+  foodOptionRoutes,
+  {
+    prefix: "/food-options",
+  },
+);
 await app.register(authModule, {
   prefix: "/api/v1",
 });
