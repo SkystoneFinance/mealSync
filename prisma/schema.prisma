@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL") 
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -13,39 +13,37 @@ enum Role {
   USER
 }
 
-
 model Staff {
-  id           String       @id @default(uuid())
+  id String @id @default(uuid())
 
-  staffNumber  String       @unique
-  firstName    String
-  lastName     String
-  department   String
+  staffNumber String @unique
+  firstName   String
+  lastName    String
+  department  String
 
-  qrCodeId     String       @unique
-  qrImage      String
-  isActive     Boolean      @default(true)
+  qrCodeId String  @unique
+  qrImage  String
+  isActive Boolean @default(true)
 
-  attendances  Attendance[]
+  user        User?
+  attendances Attendance[]
+  selections  MealSelection[]
 
-  user User?
-
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Attendance {
-  id         String   @id @default(uuid())
+  id String @id @default(uuid())
 
-  staffId    String
+  staffId   String
+  mealDate  DateTime
+  scannedAt DateTime @default(now())
 
-  mealDate   DateTime
-  scannedAt  DateTime @default(now())
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
-  staff      Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
-
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([staffId])
   @@index([mealDate])
@@ -53,22 +51,50 @@ model Attendance {
 }
 
 model User {
+  id String @id @default(uuid())
 
-  id         String @id @default(uuid())
+  email    String @unique
+  password String
 
-  email      String @unique
+  role     Role    @default(USER)
+  isActive Boolean @default(true)
 
-  password   String
+  staffId String? @unique
+  staff   Staff?  @relation(fields: [staffId], references: [id], onDelete: SetNull)
 
-  role       Role @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
-  isActive   Boolean @default(true)
+model FoodOption {
+  id String @id @default(uuid())
 
-  staffId    String?  @unique
+  name  String
+  image String
 
-  staff      Staff? @relation(fields: [staffId], references: [id])
+  isActive Boolean @default(true)
 
-  createdAt  DateTime @default(now())
+  selections MealSelection[]
 
-  updatedAt  DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MealSelection {
+  id String @id @default(uuid())
+
+  staffId      String
+  foodOptionId String
+  mealDate     DateTime
+
+  staff      Staff      @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  foodOption FoodOption @relation(fields: [foodOptionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([staffId, mealDate])
+  @@index([staffId])
+  @@index([foodOptionId])
+  @@index([mealDate])
 }
