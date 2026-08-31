@@ -8,6 +8,7 @@ import { validate } from "../../plugins/zod";
 import {
   createFoodOptionSchema,
   updateFoodOptionSchema,
+  updateFoodOptionStatusSchema,
 } from "./schema";
 
 import {
@@ -185,46 +186,51 @@ export class FoodOptionController {
 
   }
 
-
   async updateStatus(
 
-    request: FastifyRequest<{
-      Params: {
-        id: string;
-      };
+  request: FastifyRequest<{
+    Params: {
+      id: string;
+    };
 
-      Body: {
-        isActive: boolean;
-      };
-    }>,
+    Body: {
+      isActive: boolean;
+    };
+  }>,
 
-    reply: FastifyReply,
+  reply: FastifyReply,
 
-  ) {
+) {
 
-    const result =
-      await this.service.updateStatus(
-
-        request.params.id,
-
-        request.body.isActive,
-
-      );
+  const body =
+    await validate(
+      updateFoodOptionStatusSchema,
+      request.body,
+    );
 
 
-    return reply.send({
+  const result =
+    await this.service.updateStatus(
 
-      success: true,
+      request.params.id,
 
-      message:
-        "Food option status updated.",
+      body.isActive,
 
-      data: result,
+    );
 
-    });
 
-  }
+  return reply.send({
 
+    success: true,
+
+    message:
+      "Food option status updated.",
+
+    data: result,
+
+  });
+
+}
 
   async delete(
 

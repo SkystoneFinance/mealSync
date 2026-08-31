@@ -1,41 +1,38 @@
-import type {
-  FastifyInstance,
-} from "fastify";
+import type { FastifyInstance } from "fastify";
 
-import {
-  FoodOptionController,
-} from "./controller";
+import { FoodOptionController } from "./controller";
 
-import {
-  authenticate,
-} from "../../middleware/authenticate";
-
-import {
-  authorize,
-} from "../../middleware/authorize";
+import { authenticate } from "../../middleware/auth";
+import { authorize } from "../../middleware/authorize";
 
 
-const controller =
-  new FoodOptionController();
+const controller = new FoodOptionController();
 
 
 export async function foodOptionRoutes(
   app: FastifyInstance,
 ) {
 
+  // =========================================
+  // ADMIN + SUPER ADMIN
+  // =========================================
+
   const adminAccess = [
-
     authenticate,
-
     authorize(
       "ADMIN",
       "SUPER_ADMIN",
     ),
-
   ];
 
 
-  app.post(
+  // =========================================
+  // CREATE FOOD OPTION
+  // =========================================
+
+  app.post<{
+    Body: any;
+  }>(
     "/",
     {
       preHandler: adminAccess,
@@ -44,40 +41,63 @@ export async function foodOptionRoutes(
   );
 
 
+  // =========================================
+  // GET ALL FOOD OPTIONS
+  // =========================================
+
   app.get(
     "/",
     {
-      preHandler: [
-        authenticate,
-      ],
+      preHandler: authenticate,
     },
     controller.findAll.bind(controller),
   );
 
 
-  app.get(
+  // =========================================
+  // GET FOOD OPTIONS BY DATE
+  // =========================================
+
+  app.get<{
+    Querystring: {
+      date: string;
+    };
+  }>(
     "/date",
     {
-      preHandler: [
-        authenticate,
-      ],
+      preHandler: authenticate,
     },
     controller.findByDate.bind(controller),
   );
 
 
-  app.get(
+  // =========================================
+  // GET FOOD OPTION BY ID
+  // =========================================
+
+  app.get<{
+    Params: {
+      id: string;
+    };
+  }>(
     "/:id",
     {
-      preHandler: [
-        authenticate,
-      ],
+      preHandler: authenticate,
     },
     controller.findById.bind(controller),
   );
 
 
-  app.patch(
+  // =========================================
+  // UPDATE FOOD OPTION
+  // =========================================
+
+  app.patch<{
+    Params: {
+      id: string;
+    };
+    Body: any;
+  }>(
     "/:id",
     {
       preHandler: adminAccess,
@@ -86,7 +106,19 @@ export async function foodOptionRoutes(
   );
 
 
-  app.patch(
+  // =========================================
+  // UPDATE FOOD OPTION STATUS
+  // =========================================
+
+  app.patch<{
+    Params: {
+      id: string;
+    };
+
+    Body: {
+      isActive: boolean;
+    };
+  }>(
     "/:id/status",
     {
       preHandler: adminAccess,
@@ -95,7 +127,15 @@ export async function foodOptionRoutes(
   );
 
 
-  app.delete(
+  // =========================================
+  // DELETE FOOD OPTION
+  // =========================================
+
+  app.delete<{
+    Params: {
+      id: string;
+    };
+  }>(
     "/:id",
     {
       preHandler: adminAccess,

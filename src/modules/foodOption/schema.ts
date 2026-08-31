@@ -11,12 +11,11 @@ export const createFoodOptionSchema = z.object({
 
   mealDate: z
     .string()
-    .datetime(),
+    .min(1, "Meal date is required"),
 });
 
 
 export const updateFoodOptionSchema = z.object({
-
   name: z
     .string()
     .min(2)
@@ -29,14 +28,16 @@ export const updateFoodOptionSchema = z.object({
 
   mealDate: z
     .string()
-    .datetime()
+    .min(1)
     .optional(),
-
 });
 
 
 export const foodOptionIdSchema = z.object({
-
   id: z.string().uuid(),
+});
 
+
+export const updateFoodOptionStatusSchema = z.object({
+  isActive: z.boolean(),
 });

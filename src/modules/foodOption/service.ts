@@ -24,7 +24,11 @@ export class FoodOptionService {
       new Date(data.mealDate);
 
 
-    if (Number.isNaN(mealDate.getTime())) {
+    if (
+      Number.isNaN(
+        mealDate.getTime(),
+      )
+    ) {
 
       throw new AppError(
         400,
@@ -112,21 +116,47 @@ export class FoodOptionService {
     await this.getById(id);
 
 
+    let mealDate:
+      | Date
+      | undefined;
+
+
+    if (data.mealDate) {
+
+      mealDate =
+        new Date(data.mealDate);
+
+
+      if (
+        Number.isNaN(
+          mealDate.getTime(),
+        )
+      ) {
+
+        throw new AppError(
+          400,
+          "Invalid meal date",
+        );
+
+      }
+
+    }
+
+
     return this.repo.update(
       id,
       {
 
-        ...(data.name && {
+        ...(data.name !== undefined && {
           name: data.name,
         }),
 
-        ...(data.image && {
+        ...(data.image !== undefined && {
           image: data.image,
         }),
 
-        ...(data.mealDate && {
-          mealDate:
-            new Date(data.mealDate),
+        ...(mealDate !== undefined && {
+          mealDate,
         }),
 
       },

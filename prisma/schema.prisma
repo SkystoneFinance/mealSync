@@ -21,13 +21,18 @@ model Staff {
   lastName    String
   department  String
 
+  // Added for first-time activation/login
+  phoneNumber String? @unique
+
   qrCodeId String  @unique
   qrImage  String
   isActive Boolean @default(true)
 
+  // Relations
   user        User?
   attendances Attendance[]
   selections  MealSelection[]
+  otps        StaffOtp[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -53,14 +58,17 @@ model Attendance {
 model User {
   id String @id @default(uuid())
 
-  email    String @unique
-  password String
+  // Admins use these
+  email    String? @unique
+  password String?
 
   role     Role    @default(USER)
   isActive Boolean @default(true)
 
+  // Staff users are linked here
   staffId String? @unique
-  staff   Staff?  @relation(fields: [staffId], references: [id], onDelete: SetNull)
+
+  staff Staff? @relation(fields: [staffId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -72,12 +80,17 @@ model FoodOption {
   name  String
   image String
 
+  mealDate DateTime
+
   isActive Boolean @default(true)
 
   selections MealSelection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([mealDate])
+  @@index([isActive])
 }
 
 model MealSelection {
@@ -87,14 +100,35 @@ model MealSelection {
   foodOptionId String
   mealDate     DateTime
 
-  staff      Staff      @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
   foodOption FoodOption @relation(fields: [foodOptionId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // One staff = one food selection per day
   @@unique([staffId, mealDate])
   @@index([staffId])
   @@index([foodOptionId])
   @@index([mealDate])
+}
+
+model StaffOtp {
+  id String @id @default(uuid())
+
+  staffId String
+
+  code String
+
+  expiresAt DateTime
+
+  verifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([expiresAt])
 }

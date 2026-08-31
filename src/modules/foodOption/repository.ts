@@ -9,7 +9,9 @@ export class FoodOptionRepository {
   }) {
 
     return prisma.foodOption.create({
+
       data,
+
     });
 
   }
@@ -19,9 +21,15 @@ export class FoodOptionRepository {
 
     return prisma.foodOption.findMany({
 
-      orderBy: {
-        mealDate: "asc",
-      },
+      orderBy: [
+        {
+          mealDate: "asc",
+        },
+
+        {
+          createdAt: "asc",
+        },
+      ],
 
     });
 
@@ -61,11 +69,13 @@ export class FoodOptionRepository {
 
   update(
     id: string,
+
     data: {
       name?: string;
       image?: string;
       mealDate?: Date;
     },
+
   ) {
 
     return prisma.foodOption.update({
