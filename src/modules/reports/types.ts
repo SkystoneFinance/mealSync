@@ -1,3 +1,16 @@
+export type ReportPeriod =
+  | "today"
+  | "weekly"
+  | "monthly";
+
+
+export type ExportPeriod =
+  | "today"
+  | "current-week"
+  | "previous-week"
+  | "current-month"
+  | "previous-month";
+
 export interface ReportQuery {
   from?: string;
   to?: string;
@@ -16,3 +29,4 @@ export interface SummaryReport {
   remaining: number;
   attendanceRate: number;
 }
+
