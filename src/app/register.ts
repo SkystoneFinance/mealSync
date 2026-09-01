@@ -6,6 +6,9 @@ import prismaPlugin from "../plugins/prisma";
 import socketPlugin from "../plugins/socket";
 import staffModule from "../modules/staff";
 import reportModule from "../modules/reports";
+import {
+  staffAuthRoutes,
+} from "../modules/staffAuth";
 import dashboardModule from "../modules/dashboard";
 import {
   foodOptionRoutes,
@@ -43,6 +46,12 @@ export async function register(app: FastifyInstance) {
   await app.register(reportModule, {
   prefix: "/api/v1",
 });
+app.register(
+  staffAuthRoutes,
+  {
+    prefix: "/staff-auth",
+  },
+);
 await app.register(
   foodOptionRoutes,
   {
