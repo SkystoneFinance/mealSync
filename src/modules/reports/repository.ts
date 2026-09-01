@@ -13,25 +13,22 @@ import ExcelJS from "exceljs";
 
 import { prisma } from "../../config/prisma";
 
-
 // ========================================
 // EXPORT PERIOD TYPES
 // ========================================
 
-type ExportPeriod =
+export type ExportPeriod =
   | "today"
   | "current-week"
   | "previous-week"
   | "current-month"
   | "previous-month";
 
-
 // ========================================
 // REPORT REPOSITORY
 // ========================================
 
 export class ReportRepository {
-
 
   // ========================================
   // TODAY SUMMARY
@@ -41,37 +38,24 @@ export class ReportRepository {
 
     const today = new Date();
 
-
     const totalStaff =
       await prisma.staff.count({
-
         where: {
           isActive: true,
         },
-
       });
-
 
     const served =
       await prisma.attendance.count({
-
         where: {
-
           mealDate: {
-
             gte: startOfDay(today),
-
             lte: endOfDay(today),
-
           },
-
         },
-
       });
 
-
     return {
-
       totalStaff,
 
       served,
@@ -80,22 +64,16 @@ export class ReportRepository {
         totalStaff - served,
 
       attendanceRate:
-
         totalStaff === 0
-
           ? 0
-
           : Number(
               (
                 (served / totalStaff) *
                 100
               ).toFixed(2)
             ),
-
     };
-
   }
-
 
   // ========================================
   // WEEKLY SUMMARY
@@ -105,24 +83,17 @@ export class ReportRepository {
 
     const today = new Date();
 
-
     const totalStaff =
       await prisma.staff.count({
-
         where: {
           isActive: true,
         },
-
       });
-
 
     const served =
       await prisma.attendance.count({
-
         where: {
-
           mealDate: {
-
             gte: startOfWeek(
               today,
               {
@@ -136,16 +107,11 @@ export class ReportRepository {
                 weekStartsOn: 1,
               }
             ),
-
           },
-
         },
-
       });
 
-
     return {
-
       totalStaff,
 
       served,
@@ -154,22 +120,16 @@ export class ReportRepository {
         totalStaff - served,
 
       attendanceRate:
-
         totalStaff === 0
-
           ? 0
-
           : Number(
               (
                 (served / totalStaff) *
                 100
               ).toFixed(2)
             ),
-
     };
-
   }
-
 
   // ========================================
   // MONTHLY SUMMARY
@@ -179,39 +139,25 @@ export class ReportRepository {
 
     const today = new Date();
 
-
     const totalStaff =
       await prisma.staff.count({
-
         where: {
           isActive: true,
         },
-
       });
-
 
     const served =
       await prisma.attendance.count({
-
         where: {
-
           mealDate: {
+            gte: startOfMonth(today),
 
-            gte:
-              startOfMonth(today),
-
-            lte:
-              endOfMonth(today),
-
+            lte: endOfMonth(today),
           },
-
         },
-
       });
 
-
     return {
-
       totalStaff,
 
       served,
@@ -220,22 +166,16 @@ export class ReportRepository {
         totalStaff - served,
 
       attendanceRate:
-
         totalStaff === 0
-
           ? 0
-
           : Number(
               (
                 (served / totalStaff) *
                 100
               ).toFixed(2)
             ),
-
     };
-
   }
-
 
   // ========================================
   // DEPARTMENT REPORT
@@ -245,53 +185,37 @@ export class ReportRepository {
 
     const departments =
       await prisma.staff.groupBy({
-
         by: [
           "department",
         ],
 
         _count: {
-
           department: true,
-
         },
-
       });
 
-
     return Promise.all(
-
       departments.map(
         async (dept) => {
 
           const served =
             await prisma.attendance.count({
-
               where: {
-
                 staff: {
-
                   department:
                     dept.department,
-
                 },
 
                 mealDate: {
-
                   gte:
                     startOfDay(
                       new Date()
                     ),
-
                 },
-
               },
-
             });
 
-
           return {
-
             department:
               dept.department,
 
@@ -303,16 +227,11 @@ export class ReportRepository {
             remaining:
               dept._count.department -
               served,
-
           };
-
         }
       )
-
     );
-
   }
-
 
   // ========================================
   // STAFF SUMMARY
@@ -325,14 +244,10 @@ export class ReportRepository {
       | "monthly",
   ) {
 
-    const today =
-      new Date();
-
+    const today = new Date();
 
     let from: Date;
-
     let to: Date;
-
 
     switch (period) {
 
@@ -345,7 +260,6 @@ export class ReportRepository {
           endOfDay(today);
 
         break;
-
 
       case "weekly":
 
@@ -367,7 +281,6 @@ export class ReportRepository {
 
         break;
 
-
       default:
 
         from =
@@ -377,19 +290,14 @@ export class ReportRepository {
           endOfMonth(today);
 
         break;
-
     }
-
 
     const staff =
       await prisma.staff.findMany({
 
         where: {
-
           isActive: true,
-
         },
-
 
         include: {
 
@@ -398,21 +306,14 @@ export class ReportRepository {
             where: {
 
               mealDate: {
-
                 gte: from,
-
                 lte: to,
-
               },
 
             },
 
-
             orderBy: {
-
-              mealDate:
-                "desc",
-
+              mealDate: "desc",
             },
 
           },
@@ -420,7 +321,6 @@ export class ReportRepository {
         },
 
       });
-
 
     return staff.map(
       (person) => ({
@@ -441,19 +341,13 @@ export class ReportRepository {
           person.attendances.length,
 
         lastMeal:
-
           person.attendances.length
-
-            ? person.attendances[0]
-                .mealDate
-
+            ? person.attendances[0].mealDate
             : null,
 
       })
     );
-
   }
-
 
   // ========================================
   // GET EXPORT DATE RANGE
@@ -461,35 +355,34 @@ export class ReportRepository {
 
   private getExportDateRange(
     period: ExportPeriod,
-  ) {
+  ): {
+    from: Date;
+    to: Date;
+  } {
 
     const today =
       new Date();
 
-
     switch (period) {
 
-
-      // ------------------------------------
+      // ====================================
       // TODAY
-      // ------------------------------------
+      // ====================================
 
       case "today":
 
         return {
-
           from:
             startOfDay(today),
 
           to:
             endOfDay(today),
-
         };
 
-
-      // ------------------------------------
+      // ====================================
       // CURRENT WEEK
-      // ------------------------------------
+      // Monday → Today
+      // ====================================
 
       case "current-week": {
 
@@ -501,22 +394,19 @@ export class ReportRepository {
             }
           );
 
-
         const to =
           endOfDay(today);
-
 
         return {
           from,
           to,
         };
-
       }
 
-
-      // ------------------------------------
+      // ====================================
       // PREVIOUS WEEK
-      // ------------------------------------
+      // Previous Monday → Sunday
+      // ====================================
 
       case "previous-week": {
 
@@ -526,7 +416,6 @@ export class ReportRepository {
             1
           );
 
-
         const from =
           startOfWeek(
             previousWeek,
@@ -534,7 +423,6 @@ export class ReportRepository {
               weekStartsOn: 1,
             }
           );
-
 
         const to =
           endOfWeek(
@@ -544,46 +432,35 @@ export class ReportRepository {
             }
           );
 
-
         return {
-
           from,
-
           to,
-
         };
-
       }
 
-
-      // ------------------------------------
+      // ====================================
       // CURRENT MONTH
-      // ------------------------------------
+      // 1st → Today
+      // ====================================
 
       case "current-month": {
 
         const from =
           startOfMonth(today);
 
-
         const to =
           endOfDay(today);
 
-
         return {
-
           from,
-
           to,
-
         };
-
       }
 
-
-      // ------------------------------------
+      // ====================================
       // PREVIOUS MONTH
-      // ------------------------------------
+      // 1st → Last day
+      // ====================================
 
       case "previous-month": {
 
@@ -593,33 +470,23 @@ export class ReportRepository {
             1
           );
 
-
         const from =
           startOfMonth(
             previousMonth
           );
-
 
         const to =
           endOfMonth(
             previousMonth
           );
 
-
         return {
-
           from,
-
           to,
-
         };
-
       }
-
     }
-
   }
-
 
   // ========================================
   // EXPORT EXCEL REPORT
@@ -629,10 +496,9 @@ export class ReportRepository {
     period: ExportPeriod,
   ) {
 
-
-    // ------------------------------------
+    // ======================================
     // GET DATE RANGE
-    // ------------------------------------
+    // ======================================
 
     const {
       from,
@@ -642,20 +508,16 @@ export class ReportRepository {
         period
       );
 
-
-    // ------------------------------------
+    // ======================================
     // GET ACTIVE STAFF
-    // ------------------------------------
+    // ======================================
 
     const staff =
       await prisma.staff.findMany({
 
         where: {
-
           isActive: true,
-
         },
-
 
         include: {
 
@@ -664,21 +526,14 @@ export class ReportRepository {
             where: {
 
               mealDate: {
-
                 gte: from,
-
                 lte: to,
-
               },
 
             },
 
-
             orderBy: {
-
-              mealDate:
-                "desc",
-
+              mealDate: "desc",
             },
 
           },
@@ -686,120 +541,94 @@ export class ReportRepository {
         },
 
         orderBy: {
-
-          staffNumber:
-            "asc",
-
+          staffNumber: "asc",
         },
 
       });
 
-
-    // ------------------------------------
+    // ======================================
     // CREATE WORKBOOK
-    // ------------------------------------
+    // ======================================
 
     const workbook =
       new ExcelJS.Workbook();
-
 
     const sheet =
       workbook.addWorksheet(
         "Meal Report"
       );
 
-
-    // ------------------------------------
-    // REPORT INFORMATION
-    // ------------------------------------
+    // ======================================
+    // REPORT TITLE
+    // ======================================
 
     sheet.mergeCells(
       "A1:E1"
     );
-
 
     sheet.getCell(
       "A1"
     ).value =
       "MealSync Attendance Report";
 
-
     sheet.getCell(
       "A1"
     ).font = {
-
       bold: true,
-
       size: 16,
-
     };
-
 
     sheet.getCell(
       "A1"
     ).alignment = {
-
       horizontal:
         "center",
-
     };
 
+    // ======================================
+    // REPORT PERIOD
+    // ======================================
 
     sheet.mergeCells(
       "A2:E2"
     );
-
 
     sheet.getCell(
       "A2"
     ).value =
       `Period: ${period}`;
 
-
     sheet.mergeCells(
       "A3:E3"
     );
 
-
     sheet.getCell(
       "A3"
     ).value =
-      `From: ${from.toLocaleDateString()}  To: ${to.toLocaleDateString()}`;
+      `From: ${from.toLocaleDateString()} To: ${to.toLocaleDateString()}`;
 
-
-    // ------------------------------------
+    // ======================================
     // TABLE HEADER
-    // ------------------------------------
+    // ======================================
 
     sheet.addRow([]);
 
-
     const headerRow =
       sheet.addRow([
-
         "Staff Number",
-
         "Name",
-
         "Department",
-
         "Meals Taken",
-
         "Last Meal",
-
       ]);
 
-
     headerRow.font = {
-
       bold: true,
-
     };
 
-
-    // ------------------------------------
-    // ADD STAFF DATA
-    // ------------------------------------
+    // ======================================
+    // STAFF DATA
+    // ======================================
 
     staff.forEach(
       (person) => {
@@ -809,7 +638,6 @@ export class ReportRepository {
             ? person.attendances[0]
                 .mealDate
             : null;
-
 
         sheet.addRow([
 
@@ -826,14 +654,12 @@ export class ReportRepository {
             : "--",
 
         ]);
-
       }
     );
 
-
-    // ------------------------------------
+    // ======================================
     // COLUMN WIDTHS
-    // ------------------------------------
+    // ======================================
 
     sheet.columns = [
 
@@ -864,29 +690,21 @@ export class ReportRepository {
 
     ];
 
-
-    // ------------------------------------
-    // FREEZE HEADER AREA
-    // ------------------------------------
+    // ======================================
+    // FREEZE HEADER
+    // ======================================
 
     sheet.views = [
-
       {
         state: "frozen",
-
         ySplit: 5,
-
       },
-
     ];
 
-
-    // ------------------------------------
-    // RETURN EXCEL FILE
-    // ------------------------------------
+    // ======================================
+    // RETURN EXCEL BUFFER
+    // ======================================
 
     return workbook.xlsx.writeBuffer();
-
   }
-
 }
