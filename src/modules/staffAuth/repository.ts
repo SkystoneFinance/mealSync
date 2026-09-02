@@ -1,74 +1,160 @@
 import { prisma } from "../../config/prisma";
 
+
 export class StaffAuthRepository {
 
-  findStaffByNumber(staffNumber: string) {
+  // ===============================
+  // STAFF
+  // ===============================
+
+  findStaffByNumber(
+    staffNumber: string,
+  ) {
+
     return prisma.staff.findUnique({
+
       where: {
         staffNumber,
       },
+
     });
+
   }
 
-  findStaffByPhone(phoneNumber: string) {
+
+  findStaffByPhone(
+    phoneNumber: string,
+  ) {
+
     return prisma.staff.findUnique({
+
       where: {
         phoneNumber,
       },
+
     });
+
   }
+
 
   updatePhoneNumber(
     staffId: string,
     phoneNumber: string,
   ) {
+
     return prisma.staff.update({
+
       where: {
         id: staffId,
       },
+
       data: {
         phoneNumber,
       },
+
     });
+
   }
 
-  createOtp(data: {
-    staffId: string;
-    code: string;
-    expiresAt: Date;
-  }) {
-    return prisma.staffOtp.create({
-      data,
-    });
-  }
 
-  findValidOtp(
+  // ===============================
+  // OTP
+  // ===============================
+
+  async invalidatePreviousOtps(
     staffId: string,
-    code: string,
   ) {
-    return prisma.staffOtp.findFirst({
+
+    return prisma.staffOtp.updateMany({
+
       where: {
+
         staffId,
-        code,
+
         verifiedAt: null,
-        expiresAt: {
-          gt: new Date(),
-        },
+
       },
-      orderBy: {
-        createdAt: "desc",
+
+      data: {
+
+        // Mark old OTPs as no longer usable
+        verifiedAt: new Date(),
+
       },
+
     });
+
   }
 
-  markOtpVerified(id: string) {
+
+  createOtp(
+    data: {
+
+      staffId: string;
+
+      code: string;
+
+      expiresAt: Date;
+
+    },
+  ) {
+
+    return prisma.staffOtp.create({
+
+      data,
+
+    });
+
+  }
+
+
+  findLatestValidOtp(
+    staffId: string,
+  ) {
+
+    return prisma.staffOtp.findFirst({
+
+      where: {
+
+        staffId,
+
+        verifiedAt: null,
+
+        expiresAt: {
+
+          gt: new Date(),
+
+        },
+
+      },
+
+      orderBy: {
+
+        createdAt: "desc",
+
+      },
+
+    });
+
+  }
+
+
+  markOtpVerified(
+    id: string,
+  ) {
+
     return prisma.staffOtp.update({
+
       where: {
         id,
       },
+
       data: {
         verifiedAt: new Date(),
       },
+
     });
+
   }
+
 }

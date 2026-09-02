@@ -1,14 +1,40 @@
-import { AppError } from "../../utils/error";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
+
+import {
+  AppError,
+} from "../../utils/error";
 
 import {
   StaffAuthRepository,
 } from "./repository";
+
 
 export class StaffAuthService {
 
   private readonly repo =
     new StaffAuthRepository();
 
+
+  // ===============================
+  // GENERATE SECURE OTP
+  // ===============================
+
+  private generateOtp() {
+
+    return crypto
+      .randomInt(
+        100000,
+        1000000,
+      )
+      .toString();
+
+  }
+
+
+  // ===============================
+  // ACTIVATE STAFF / SEND OTP
+  // ===============================
 
   async activate(
     staffNumber: string,
@@ -20,52 +46,79 @@ export class StaffAuthService {
         staffNumber,
       );
 
+
+    // -------------------------------
+    // STAFF EXISTS?
+    // -------------------------------
+
     if (!staff) {
+
       throw new AppError(
         404,
         "Staff number not found",
       );
+
     }
 
+
+    // -------------------------------
+    // STAFF ACTIVE?
+    // -------------------------------
+
     if (!staff.isActive) {
+
       throw new AppError(
         403,
         "Staff account is inactive",
       );
+
     }
 
 
-    // Already linked to another number
+    // -------------------------------
+    // PHONE ALREADY BELONGS TO STAFF?
+    // -------------------------------
+
     if (
       staff.phoneNumber &&
       staff.phoneNumber !== phoneNumber
     ) {
+
       throw new AppError(
         409,
         "This staff account is already linked to another phone number",
       );
+
     }
 
 
-    // Make sure phone isn't already
-    // attached to another staff
+    // -------------------------------
+    // PHONE BELONGS TO ANOTHER STAFF?
+    // -------------------------------
+
     const existingStaff =
       await this.repo.findStaffByPhone(
         phoneNumber,
       );
 
+
     if (
       existingStaff &&
       existingStaff.id !== staff.id
     ) {
+
       throw new AppError(
         409,
         "This phone number is already linked to another staff account",
       );
+
     }
 
 
-    // First-time activation
+    // -------------------------------
+    // FIRST-TIME ACTIVATION
+    // -------------------------------
+
     if (!staff.phoneNumber) {
 
       await this.repo.updatePhoneNumber(
@@ -76,44 +129,97 @@ export class StaffAuthService {
     }
 
 
-    // Generate 6-digit OTP
+    // -------------------------------
+    // INVALIDATE OLD OTPs
+    // -------------------------------
+
+    await this.repo.invalidatePreviousOtps(
+      staff.id,
+    );
+
+
+    // -------------------------------
+    // GENERATE SECURE OTP
+    // -------------------------------
+
     const code =
-      Math.floor(
-        100000 +
-        Math.random() * 900000,
-      ).toString();
+      this.generateOtp();
 
 
-    // OTP expires in 5 minutes
+    // -------------------------------
+    // HASH OTP
+    // -------------------------------
+
+    const hashedCode =
+      await bcrypt.hash(
+        code,
+        10,
+      );
+
+
+    // -------------------------------
+    // EXPIRE IN 5 MINUTES
+    // -------------------------------
+
     const expiresAt =
       new Date(
         Date.now() + 5 * 60 * 1000,
       );
 
 
+    // -------------------------------
+    // SAVE HASHED OTP
+    // -------------------------------
+
     await this.repo.createOtp({
 
       staffId: staff.id,
 
-      code,
+      code: hashedCode,
 
       expiresAt,
 
     });
 
 
+    // ===============================
     // DEVELOPMENT ONLY
+    // ===============================
+
     console.log(
-      `Staff OTP for ${staff.staffNumber}: ${code}`,
+      `\n🔐 Staff OTP`,
+    );
+
+    console.log(
+      `Staff: ${staff.staffNumber}`,
+    );
+
+    console.log(
+      `Phone: ${phoneNumber}`,
+    );
+
+    console.log(
+      `OTP: ${code}`,
+    );
+
+    console.log(
+      `Expires: ${expiresAt.toLocaleString()}\n`,
     );
 
 
     return {
+
       message:
         "OTP generated successfully.",
+
     };
+
   }
 
+
+  // ===============================
+  // VERIFY OTP
+  // ===============================
 
   async verifyOtp(
     staffNumber: string,
@@ -127,44 +233,94 @@ export class StaffAuthService {
       );
 
 
+    // -------------------------------
+    // STAFF EXISTS?
+    // -------------------------------
+
     if (!staff) {
+
       throw new AppError(
         404,
         "Staff number not found",
       );
+
     }
 
 
+    // -------------------------------
+    // STAFF ACTIVE?
+    // -------------------------------
+
     if (!staff.isActive) {
+
       throw new AppError(
         403,
         "Staff account is inactive",
       );
+
     }
 
 
-    if (staff.phoneNumber !== phoneNumber) {
+    // -------------------------------
+    // PHONE MATCH?
+    // -------------------------------
+
+    if (
+      staff.phoneNumber !== phoneNumber
+    ) {
+
       throw new AppError(
         401,
         "Phone number does not match this staff account",
       );
+
     }
 
 
+    // -------------------------------
+    // GET LATEST VALID OTP
+    // -------------------------------
+
     const otp =
-      await this.repo.findValidOtp(
+      await this.repo.findLatestValidOtp(
         staff.id,
-        code,
       );
 
 
     if (!otp) {
+
       throw new AppError(
         401,
         "Invalid or expired OTP",
       );
+
     }
 
+
+    // -------------------------------
+    // COMPARE HASHED OTP
+    // -------------------------------
+
+    const isValid =
+      await bcrypt.compare(
+        code,
+        otp.code,
+      );
+
+
+    if (!isValid) {
+
+      throw new AppError(
+        401,
+        "Invalid OTP",
+      );
+
+    }
+
+
+    // -------------------------------
+    // MARK OTP AS USED
+    // -------------------------------
 
     await this.repo.markOtpVerified(
       otp.id,
@@ -172,5 +328,7 @@ export class StaffAuthService {
 
 
     return staff;
+
   }
+
 }
