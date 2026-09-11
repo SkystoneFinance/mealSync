@@ -49,7 +49,7 @@ export async function register(app: FastifyInstance) {
 app.register(
   staffAuthRoutes,
   {
-    prefix: "/staff-auth",
+    prefix: "/api/v1/staff-auth",
   },
 );
 await app.register(
