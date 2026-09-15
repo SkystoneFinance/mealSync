@@ -6,6 +6,9 @@ import prismaPlugin from "../plugins/prisma";
 import socketPlugin from "../plugins/socket";
 import staffModule from "../modules/staff";
 import reportModule from "../modules/reports";
+import { 
+  mealSelectionRoutes,
+} from "../modules/mealSelection/routes";
 import {
   staffAuthRoutes,
 } from "../modules/staffAuth";
@@ -50,6 +53,12 @@ app.register(
   staffAuthRoutes,
   {
     prefix: "/api/v1/staff-auth",
+  },
+);
+app.register(
+  mealSelectionRoutes,
+  {
+    prefix: "/meal-selections",
   },
 );
 await app.register(
