@@ -36,6 +36,14 @@ export class StaffAuthRepository {
 
   }
 
+  findStaffById(staffId: string) {
+    return prisma.staff.findUnique({
+      where: {
+        id: staffId,
+      },
+    });
+  }
+
 
   updatePhoneNumber(
     staffId: string,

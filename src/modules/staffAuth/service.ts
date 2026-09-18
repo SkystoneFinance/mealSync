@@ -331,4 +331,55 @@ export class StaffAuthService {
 
   }
 
+  // ===============================
+  // GET STAFF BY ID
+  // ===============================
+
+  async getProfile(staffId: string) {
+
+  const staff =
+    await this.repo.findStaffById(
+      staffId,
+    );
+
+
+  if (!staff) {
+
+    throw new AppError(
+      404,
+      "Staff profile not found",
+    );
+
+  }
+
+
+  return {
+
+    id: staff.id,
+
+    staffNumber:
+      staff.staffNumber,
+
+    firstName:
+      staff.firstName,
+
+    lastName:
+      staff.lastName,
+
+    department:
+      staff.department,
+
+    phoneNumber:
+      staff.phoneNumber,
+
+    qrImage:
+      staff.qrImage,
+
+    isActive:
+      staff.isActive,
+
+  };
+
+}
+
 }

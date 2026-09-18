@@ -6,6 +6,10 @@ import {
   StaffAuthController,
 } from "./controller";
 
+import {
+  authenticate,
+} from "../../middleware/auth";
+
 
 const controller =
   new StaffAuthController();
@@ -15,14 +19,35 @@ export async function staffAuthRoutes(
   app: FastifyInstance,
 ) {
 
-  // First-time activation
+  // =================================
+  // CURRENT STAFF PROFILE
+  // =================================
+
+  app.get(
+    "/me",
+    {
+      preHandler: [
+        authenticate,
+      ],
+    },
+    controller.me.bind(controller),
+  );
+
+
+  // =================================
+  // FIRST-TIME ACTIVATION
+  // =================================
+
   app.post(
     "/activate",
     controller.activate.bind(controller),
   );
 
 
-  // Verify OTP + login
+  // =================================
+  // VERIFY OTP + LOGIN
+  // =================================
+
   app.post(
     "/verify-otp",
     controller.verifyOtp.bind(controller),

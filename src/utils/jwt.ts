@@ -11,7 +11,6 @@ export function generateToken(payload:any){
     {
 
       expiresIn:"7d"
-
     }
 
   );

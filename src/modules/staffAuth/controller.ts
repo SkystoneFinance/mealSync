@@ -142,4 +142,37 @@ export class StaffAuthController {
     });
 
   }
+
+  async me(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+
+  const user =
+    request.user as {
+      staffId?: string;
+      id: string;
+      role: string;
+    };
+
+
+  const staffId =
+    user.staffId ?? user.id;
+
+
+  const profile =
+    await this.service.getProfile(
+      staffId,
+    );
+
+
+  return reply.send({
+
+    success: true,
+
+    data: profile,
+
+  });
+
+}
 } 
