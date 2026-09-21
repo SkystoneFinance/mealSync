@@ -55,38 +55,54 @@ export async function foodOptionRoutes(
 
 
   // =========================================
-  // GET FOOD OPTIONS BY DATE
-  // =========================================
+// GET FOOD OPTIONS BY DATE
+// =========================================
 
-  app.get<{
-    Querystring: {
-      date: string;
-    };
-  }>(
-    "/date",
-    {
-      preHandler: authenticate,
-    },
-    controller.findByDate.bind(controller),
-  );
+app.get<{
+  Querystring: {
+    date: string;
+  };
+}>(
+  "/date",
+  {
+    preHandler: authenticate,
+  },
+  controller.findByDate.bind(controller),
+);
 
 
-  // =========================================
-  // GET FOOD OPTION BY ID
-  // =========================================
+// =========================================
+// GET FOOD OPTION SUMMARY BY DATE
+// =========================================
 
-  app.get<{
-    Params: {
-      id: string;
-    };
-  }>(
-    "/:id",
-    {
-      preHandler: authenticate,
-    },
-    controller.findById.bind(controller),
-  );
+app.get<{
+  Querystring: {
+    date: string;
+  };
+}>(
+  "/summary",
+  {
+    preHandler: authenticate,
+  },
+  controller.findSummaryByDate.bind(controller),
+);
 
+
+// =========================================
+// GET FOOD OPTION BY ID
+// =========================================
+
+app.get<{
+  Params: {
+    id: string;
+  };
+}>(
+  "/:id",
+  {
+    preHandler: authenticate,
+  },
+  controller.findById.bind(controller),
+);
 
   // =========================================
   // UPDATE FOOD OPTION

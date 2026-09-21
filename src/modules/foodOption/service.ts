@@ -190,4 +190,37 @@ export class FoodOptionService {
 
   }
 
+  async getSummaryByDate(date: string) {
+  const mealDate = new Date(date);
+
+  if (Number.isNaN(mealDate.getTime())) {
+    throw new AppError(
+      400,
+      "Invalid meal date",
+    );
+  }
+
+  const options =
+    await this.repo.findSummaryByDate(mealDate);
+
+  const totalSelections = options.reduce(
+    (total, option) =>
+      total + option._count.selections,
+    0,
+  );
+
+  return {
+    date,
+    totalSelections,
+    options: options.map((option) => ({
+      id: option.id,
+      name: option.name,
+      image: option.image,
+      mealDate: option.mealDate,
+      isActive: option.isActive,
+      selectionCount: option._count.selections,
+    })),
+  };
+}
+
 }
