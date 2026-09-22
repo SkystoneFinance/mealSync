@@ -21,10 +21,26 @@ export class AttendanceRepository {
     });
   }
 
-  async hasScannedToday(staffId: string) {
+  async findTodayMealSelection(staffId: string) {
     const today = startOfDay(new Date());
 
-    return prisma.attendance.findFirst({
+    return prisma.mealSelection.findUnique({
+      where: {
+        staffId_mealDate: {
+          staffId,
+          mealDate: today,
+        },
+      },
+      include: {
+        foodOption: true,
+      },
+    });
+  }
+
+  async countStaffScansToday(staffId: string) {
+    const today = startOfDay(new Date());
+
+    return prisma.attendance.count({
       where: {
         staffId,
         mealDate: {
@@ -100,38 +116,37 @@ export class AttendanceRepository {
   }
 
   async countToday() {
-  const today = startOfDay(new Date());
+    const today = startOfDay(new Date());
 
-  return prisma.attendance.count({
-    where: {
-      mealDate: {
-        gte: today,
-        lt: addDays(today, 1),
+    return prisma.attendance.count({
+      where: {
+        mealDate: {
+          gte: today,
+          lt: addDays(today, 1),
+        },
       },
-    },
-  });
-}
+    });
+  }
 
-async findRecent(limit = 10) {
-  const today = startOfDay(new Date());
+  async findRecent(limit = 10) {
+    const today = startOfDay(new Date());
 
-  return prisma.attendance.findMany({
-    where: {
-      mealDate: {
-        gte: today,
-        lt: addDays(today, 1),
+    return prisma.attendance.findMany({
+      where: {
+        mealDate: {
+          gte: today,
+          lt: addDays(today, 1),
+        },
       },
-    },
-    include: {
-      staff: {
-        select: staffSelect,
+      include: {
+        staff: {
+          select: staffSelect,
+        },
       },
-    },
-    orderBy: {
-      scannedAt: "desc",
-    },
-    take: limit,
-  });
-}
-
+      orderBy: {
+        scannedAt: "desc",
+      },
+      take: limit,
+    });
+  }
 }

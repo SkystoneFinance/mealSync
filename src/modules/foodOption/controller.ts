@@ -260,4 +260,23 @@ export class FoodOptionController {
 
   }
 
+  async findSummaryByDate(
+  request: FastifyRequest<{
+    Querystring: {
+      date: string;
+    };
+  }>,
+  reply: FastifyReply,
+) {
+  const result =
+    await this.service.getSummaryByDate(
+      request.query.date,
+    );
+
+  return reply.send({
+    success: true,
+    data: result,
+  });
+}
+
 }

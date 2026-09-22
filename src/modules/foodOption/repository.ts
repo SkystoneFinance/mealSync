@@ -123,4 +123,23 @@ export class FoodOptionRepository {
 
   }
 
+  async findSummaryByDate(mealDate: Date) {
+  return prisma.foodOption.findMany({
+    where: {
+      mealDate,
+      isActive: true,
+    },
+    include: {
+      _count: {
+        select: {
+          selections: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+}
+
 }
