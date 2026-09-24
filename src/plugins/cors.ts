@@ -7,6 +7,16 @@ export default fp(async (app) => {
       "http://localhost:5173",
       "https://sky-meal-sync.vercel.app",
     ],
+
+      methods: [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+      ],
+
     credentials: true,
   });
 });
