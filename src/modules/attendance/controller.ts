@@ -1,4 +1,7 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type {
+  FastifyReply,
+  FastifyRequest,
+} from "fastify";
 
 import { validate } from "../../middleware/validation";
 
@@ -7,7 +10,13 @@ import { scanAttendanceSchema } from "./schema";
 import type { ScanAttendanceDto } from "./types";
 
 export class AttendanceController {
-  private readonly service = new AttendanceService();
+  private readonly service =
+    new AttendanceService();
+
+
+  // =========================================
+  // SCAN QR
+  // =========================================
 
   async scanQRCode(
     request: FastifyRequest<{
@@ -15,19 +24,55 @@ export class AttendanceController {
     }>,
     reply: FastifyReply,
   ) {
-    const body = await validate(
-      scanAttendanceSchema,
-      request.body,
-    );
+    const body =
+      await validate(
+        scanAttendanceSchema,
+        request.body,
+      );
 
-    const attendance = await this.service.scanQRCode(body);
+    const result =
+      await this.service.scanQRCode(
+        body,
+      );
+
+    return reply.send({
+      success: true,
+      message:
+        "Staff and meal identified successfully.",
+      data: result,
+    });
+  }
+
+
+  // =========================================
+  // SERVE MEAL
+  // =========================================
+
+  async serveMeal(
+    request: FastifyRequest<{
+      Body: {
+        staffId: string;
+      };
+    }>,
+    reply: FastifyReply,
+  ) {
+    const result =
+      await this.service.serveMeal(
+        request.body.staffId,
+      );
 
     return reply.status(201).send({
       success: true,
-      message: "Attendance recorded successfully.",
-      data: attendance,
+      message:
+        "Meal serving recorded successfully.",
+      data: result,
     });
   }
+
+
+  // =========================================
+  // TODAY
+  // =========================================
 
   async todayAttendance(
     _request: FastifyRequest,
@@ -42,6 +87,11 @@ export class AttendanceController {
     });
   }
 
+
+  // =========================================
+  // HISTORY
+  // =========================================
+
   async attendanceHistory(
     _request: FastifyRequest,
     reply: FastifyReply,
@@ -54,6 +104,11 @@ export class AttendanceController {
       data: history,
     });
   }
+
+
+  // =========================================
+  // STAFF
+  // =========================================
 
   async staffAttendance(
     request: FastifyRequest<{

@@ -5,14 +5,25 @@ import type { ScanAttendanceDto } from "./types";
 
 import { getSocket } from "../../services/socket";
 
+const MAX_DAILY_SERVINGS = 3;
+
 export class AttendanceService {
   private readonly repository =
     new AttendanceRepository();
 
+  // =========================================
+  // SCAN QR CODE
+  // =========================================
+  // This ONLY identifies the staff and their
+  // selected meal.
+  //
+  // It does NOT create attendance.
+  // =========================================
+
   async scanQRCode(data: ScanAttendanceDto) {
-    // =========================================
-    // 1. FIND STAFF FROM QR CODE
-    // =========================================
+    // -----------------------------------------
+    // 1. FIND STAFF
+    // -----------------------------------------
 
     const staff =
       await this.repository.findStaffByQrCodeId(
@@ -26,10 +37,20 @@ export class AttendanceService {
       );
     }
 
+    // -----------------------------------------
+    // 2. CHECK STAFF STATUS
+    // -----------------------------------------
 
-    // =========================================
-    // 2. FIND TODAY'S MEAL SELECTION
-    // =========================================
+    if (!staff.isActive) {
+      throw new AppError(
+        403,
+        "This staff account is inactive.",
+      );
+    }
+
+    // -----------------------------------------
+    // 3. FIND TODAY'S MEAL SELECTION
+    // -----------------------------------------
 
     const mealSelection =
       await this.repository.findTodayMealSelection(
@@ -43,85 +64,36 @@ export class AttendanceService {
       );
     }
 
+    // -----------------------------------------
+    // 4. COUNT TODAY'S SERVINGS
+    // -----------------------------------------
 
-    // =========================================
-    // 3. COUNT TODAY'S SCANS
-    // =========================================
-
-    const scanCount =
+    const servedCount =
       await this.repository.countStaffScansToday(
         staff.id,
       );
 
+    // -----------------------------------------
+    // 5. CHECK DAILY LIMIT
+    // -----------------------------------------
 
-    // =========================================
-    // 4. ENFORCE 3-SCAN DAILY LIMIT
-    // =========================================
-
-    const MAX_DAILY_SCANS = 3;
-
-    if (scanCount >= MAX_DAILY_SCANS) {
+    if (servedCount >= MAX_DAILY_SERVINGS) {
       throw new AppError(
         409,
-        `${staff.firstName} ${staff.lastName} has reached the maximum of 3 scans for today.`,
+        `${staff.firstName} ${staff.lastName} has already received the maximum of ${MAX_DAILY_SERVINGS} meal servings for today.`,
       );
     }
 
+    // -----------------------------------------
+    // 6. CALCULATE REMAINING
+    // -----------------------------------------
 
-    // =========================================
-    // 5. RECORD ATTENDANCE
-    // =========================================
+    const remainingServings =
+      MAX_DAILY_SERVINGS - servedCount;
 
-    const attendance =
-      await this.repository.createAttendance(
-        staff.id,
-      );
-
-
-    // =========================================
-    // 6. CALCULATE SCAN INFORMATION
-    // =========================================
-
-    const scanNumber =
-      scanCount + 1;
-
-    const remainingScans =
-      MAX_DAILY_SCANS - scanNumber;
-
-
-    // =========================================
-    // 7. SOCKET.IO EVENT
-    // =========================================
-
-    const io = getSocket();
-
-    io.emit("attendance:new", {
-      attendanceId: attendance.id,
-
-      staff: {
-        id: staff.id,
-        staffNumber: staff.staffNumber,
-        firstName: staff.firstName,
-        lastName: staff.lastName,
-        department: staff.department,
-      },
-
-      meal: {
-        id: mealSelection.foodOption.id,
-        name: mealSelection.foodOption.name,
-        image: mealSelection.foodOption.image,
-      },
-
-      scanNumber,
-      remainingScans,
-
-      scannedAt: attendance.scannedAt,
-    });
-
-
-    // =========================================
-    // 8. RETURN SCAN RESULT
-    // =========================================
+    // -----------------------------------------
+    // 7. RETURN PREVIEW
+    // -----------------------------------------
 
     return {
       staff: {
@@ -130,6 +102,7 @@ export class AttendanceService {
         firstName: staff.firstName,
         lastName: staff.lastName,
         department: staff.department,
+        qrImage: staff.qrImage,
       },
 
       meal: {
@@ -138,25 +111,204 @@ export class AttendanceService {
         image: mealSelection.foodOption.image,
       },
 
-      attendance: {
-        id: attendance.id,
-        scannedAt: attendance.scannedAt,
-        scanNumber,
-        remainingScans,
+      serving: {
+        servedCount,
+        remainingServings,
+        maxDailyServings: MAX_DAILY_SERVINGS,
       },
     };
   }
 
+
+  // =========================================
+  // SERVE MEAL
+  // =========================================
+  // This is called ONLY after the staff member
+  // has been identified and the chef clicks
+  // "Mark as Eaten".
+  // =========================================
+
+ async serveMeal(staffId: string) {
+
+  // =========================================
+  // 1. FIND STAFF
+  // =========================================
+
+  const staff =
+    await this.repository.findStaffById(
+      staffId,
+    );
+
+  if (!staff) {
+    throw new AppError(
+      404,
+      "Staff member not found.",
+    );
+  }
+
+
+  // =========================================
+  // 2. CHECK STAFF STATUS
+  // =========================================
+
+  if (!staff.isActive) {
+    throw new AppError(
+      403,
+      "This staff account is inactive.",
+    );
+  }
+
+
+  // =========================================
+  // 3. FIND TODAY'S MEAL
+  // =========================================
+
+  const mealSelection =
+    await this.repository.findTodayMealSelection(
+      staff.id,
+    );
+
+  if (!mealSelection) {
+    throw new AppError(
+      409,
+      `${staff.firstName} ${staff.lastName} has not selected a meal for today.`,
+    );
+  }
+
+
+  // =========================================
+  // 4. ATOMICALLY CREATE SERVING
+  // =========================================
+
+  const result =
+    await this.repository.createAttendanceIfAvailable(
+      staff.id,
+    );
+
+
+  // =========================================
+  // 5. MAXIMUM REACHED
+  // =========================================
+
+  if (!result.created) {
+    throw new AppError(
+      409,
+      `${staff.firstName} ${staff.lastName} has already received the maximum of 3 meal servings for today.`,
+    );
+  }
+
+
+  // =========================================
+  // 6. SOCKET.IO EVENT
+  // =========================================
+
+  const io = getSocket();
+
+  io.emit("attendance:new", {
+    attendanceId:
+      result.attendance.id,
+
+    staff: {
+      id: staff.id,
+      staffNumber: staff.staffNumber,
+      firstName: staff.firstName,
+      lastName: staff.lastName,
+      department: staff.department,
+    },
+
+    meal: {
+      id:
+        mealSelection.foodOption.id,
+
+      name:
+        mealSelection.foodOption.name,
+
+      image:
+        mealSelection.foodOption.image,
+    },
+
+    servingNumber:
+      result.servedCount,
+
+    servedCount:
+      result.servedCount,
+
+    remainingServings:
+      result.remainingServings,
+
+    scannedAt:
+      result.attendance.scannedAt,
+  });
+
+
+  // =========================================
+  // 7. RETURN RESULT
+  // =========================================
+
+  return {
+    staff: {
+      id: staff.id,
+      staffNumber: staff.staffNumber,
+      firstName: staff.firstName,
+      lastName: staff.lastName,
+      department: staff.department,
+      qrImage: staff.qrImage,
+    },
+
+    meal: {
+      id:
+        mealSelection.foodOption.id,
+
+      name:
+        mealSelection.foodOption.name,
+
+      image:
+        mealSelection.foodOption.image,
+    },
+
+    attendance: {
+      id:
+        result.attendance.id,
+
+      scannedAt:
+        result.attendance.scannedAt,
+
+      servingNumber:
+        result.servedCount,
+
+      servedCount:
+        result.servedCount,
+
+      remainingServings:
+        result.remainingServings,
+
+      maxDailyServings: 3,
+    },
+  };
+}
+
+
+  // =========================================
+  // TODAY
+  // =========================================
 
   async getTodayAttendance() {
     return this.repository.findTodayAttendance();
   }
 
 
+  // =========================================
+  // HISTORY
+  // =========================================
+
   async getAttendanceHistory() {
     return this.repository.findAttendanceHistory();
   }
 
+
+  // =========================================
+  // STAFF ATTENDANCE
+  // =========================================
 
   async getStaffAttendance(
     staffId: string,
