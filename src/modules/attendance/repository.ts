@@ -5,10 +5,10 @@ import {
 
 import {
   Prisma,
-  PrismaClient,
 } from "@prisma/client";
 
 import { prisma } from "../../config/prisma";
+import { MAX_DAILY_SERVINGS } from "./constants";
 
 const staffSelect = {
   id: true,
@@ -20,17 +20,12 @@ const staffSelect = {
   isActive: true,
 } as const;
 
-const MAX_DAILY_SERVINGS = 3;
-
 export class AttendanceRepository {
-
   // =========================================
   // FIND STAFF BY QR CODE
   // =========================================
 
-  async findStaffByQrCodeId(
-    qrCodeId: string,
-  ) {
+  async findStaffByQrCodeId(qrCodeId: string) {
     return prisma.staff.findUnique({
       where: {
         qrCodeId,
@@ -39,14 +34,11 @@ export class AttendanceRepository {
     });
   }
 
-
   // =========================================
   // FIND STAFF BY ID
   // =========================================
 
-  async findStaffById(
-    staffId: string,
-  ) {
+  async findStaffById(staffId: string) {
     return prisma.staff.findUnique({
       where: {
         id: staffId,
@@ -55,16 +47,12 @@ export class AttendanceRepository {
     });
   }
 
-
   // =========================================
-  // TODAY'S MEAL SELECTION
+  // FIND TODAY'S MEAL SELECTION
   // =========================================
 
-  async findTodayMealSelection(
-    staffId: string,
-  ) {
-    const today =
-      startOfDay(new Date());
+  async findTodayMealSelection(staffId: string) {
+    const today = startOfDay(new Date());
 
     return prisma.mealSelection.findUnique({
       where: {
@@ -73,28 +61,22 @@ export class AttendanceRepository {
           mealDate: today,
         },
       },
-
       include: {
         foodOption: true,
       },
     });
   }
 
-
   // =========================================
   // COUNT TODAY'S SERVINGS
   // =========================================
 
-  async countStaffScansToday(
-    staffId: string,
-  ) {
-    const today =
-      startOfDay(new Date());
+  async countStaffServingsToday(staffId: string) {
+    const today = startOfDay(new Date());
 
     return prisma.attendance.count({
       where: {
         staffId,
-
         mealDate: {
           gte: today,
           lt: addDays(today, 1),
@@ -103,57 +85,34 @@ export class AttendanceRepository {
     });
   }
 
-
   // =========================================
-  // ATOMICALLY CREATE ATTENDANCE
-  // =========================================
-  //
-  // This is the important part.
-  //
-  // The count + create happen inside one
-  // SERIALIZABLE transaction.
-  //
-  // If two requests try to create the same
-  // 3rd serving simultaneously, PostgreSQL
-  // will force one transaction to retry/fail.
-  //
-  // The retry then sees the updated count
-  // and rejects the request once it reaches 3.
+  // ATOMICALLY CREATE SERVING
   // =========================================
 
   async createAttendanceIfAvailable(
     staffId: string,
   ) {
     let attempt = 0;
-
     const MAX_RETRIES = 3;
 
     while (attempt < MAX_RETRIES) {
       try {
         return await prisma.$transaction(
           async (tx) => {
-            const today =
-              startOfDay(new Date());
-
-            // ---------------------------------
-            // COUNT SERVINGS INSIDE TRANSACTION
-            // ---------------------------------
+            const today = startOfDay(
+              new Date(),
+            );
 
             const servedCount =
               await tx.attendance.count({
                 where: {
                   staffId,
-
                   mealDate: {
                     gte: today,
                     lt: addDays(today, 1),
                   },
                 },
               });
-
-            // ---------------------------------
-            // ENFORCE 3-SERVING LIMIT
-            // ---------------------------------
 
             if (
               servedCount >=
@@ -167,18 +126,12 @@ export class AttendanceRepository {
               };
             }
 
-            // ---------------------------------
-            // CREATE SERVING
-            // ---------------------------------
-
             const attendance =
               await tx.attendance.create({
                 data: {
                   staffId,
 
-                  // IMPORTANT:
-                  // Keep mealDate normalized to
-                  // the start of today's date.
+                  // Date only.
                   mealDate: today,
                 },
 
@@ -198,49 +151,36 @@ export class AttendanceRepository {
 
             return {
               created: true as const,
-
-              servedCount:
-                newServedCount,
-
+              servedCount: newServedCount,
               remainingServings,
-
               attendance,
             };
           },
-
           {
             isolationLevel:
-              Prisma.TransactionIsolationLevel.Serializable,
-
+              Prisma.TransactionIsolationLevel
+                .Serializable,
             maxWait: 5000,
-
             timeout: 10000,
           },
         );
       } catch (error) {
-
-        // PostgreSQL serialization failure.
-        //
-        // Prisma represents this as P2034.
         if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error instanceof
+            Prisma.PrismaClientKnownRequestError &&
           error.code === "P2034"
         ) {
           attempt++;
 
-          if (
-            attempt >= MAX_RETRIES
-          ) {
+          if (attempt >= MAX_RETRIES) {
             throw error;
           }
 
-          // Small delay before retrying.
-          await new Promise(
-            (resolve) =>
-              setTimeout(
-                resolve,
-                50 * attempt,
-              ),
+          await new Promise((resolve) =>
+            setTimeout(
+              resolve,
+              50 * attempt,
+            ),
           );
 
           continue;
@@ -255,14 +195,12 @@ export class AttendanceRepository {
     );
   }
 
-
   // =========================================
   // TODAY'S ATTENDANCE
   // =========================================
 
   async findTodayAttendance() {
-    const today =
-      startOfDay(new Date());
+    const today = startOfDay(new Date());
 
     return prisma.attendance.findMany({
       where: {
@@ -284,7 +222,6 @@ export class AttendanceRepository {
     });
   }
 
-
   // =========================================
   // ATTENDANCE HISTORY
   // =========================================
@@ -302,7 +239,6 @@ export class AttendanceRepository {
       },
     });
   }
-
 
   // =========================================
   // STAFF ATTENDANCE
@@ -328,14 +264,12 @@ export class AttendanceRepository {
     });
   }
 
-
   // =========================================
   // TODAY'S TOTAL
   // =========================================
 
   async countToday() {
-    const today =
-      startOfDay(new Date());
+    const today = startOfDay(new Date());
 
     return prisma.attendance.count({
       where: {
@@ -347,16 +281,12 @@ export class AttendanceRepository {
     });
   }
 
-
   // =========================================
   // RECENT ATTENDANCE
   // =========================================
 
-  async findRecent(
-    limit = 10,
-  ) {
-    const today =
-      startOfDay(new Date());
+  async findRecent(limit = 10) {
+    const today = startOfDay(new Date());
 
     return prisma.attendance.findMany({
       where: {

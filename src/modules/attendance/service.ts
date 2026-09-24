@@ -1,30 +1,26 @@
 import { AppError } from "../../utils/error";
-
-import { AttendanceRepository } from "./repository";
-import type { ScanAttendanceDto } from "./types";
-
 import { getSocket } from "../../services/socket";
 
-const MAX_DAILY_SERVINGS = 3;
+import { AttendanceRepository } from "./repository";
+import {
+  MAX_DAILY_SERVINGS,
+} from "./constants";
+
+import type {
+  ScanAttendanceDto,
+} from "./types";
 
 export class AttendanceService {
   private readonly repository =
     new AttendanceRepository();
 
   // =========================================
-  // SCAN QR CODE
-  // =========================================
-  // This ONLY identifies the staff and their
-  // selected meal.
-  //
-  // It does NOT create attendance.
+  // SCAN QR — PREVIEW ONLY
   // =========================================
 
-  async scanQRCode(data: ScanAttendanceDto) {
-    // -----------------------------------------
-    // 1. FIND STAFF
-    // -----------------------------------------
-
+  async scanQRCode(
+    data: ScanAttendanceDto,
+  ) {
     const staff =
       await this.repository.findStaffByQrCodeId(
         data.qrCodeId,
@@ -37,20 +33,12 @@ export class AttendanceService {
       );
     }
 
-    // -----------------------------------------
-    // 2. CHECK STAFF STATUS
-    // -----------------------------------------
-
     if (!staff.isActive) {
       throw new AppError(
         403,
         "This staff account is inactive.",
       );
     }
-
-    // -----------------------------------------
-    // 3. FIND TODAY'S MEAL SELECTION
-    // -----------------------------------------
 
     const mealSelection =
       await this.repository.findTodayMealSelection(
@@ -64,36 +52,20 @@ export class AttendanceService {
       );
     }
 
-    // -----------------------------------------
-    // 4. COUNT TODAY'S SERVINGS
-    // -----------------------------------------
-
     const servedCount =
-      await this.repository.countStaffScansToday(
+      await this.repository.countStaffServingsToday(
         staff.id,
       );
 
-    // -----------------------------------------
-    // 5. CHECK DAILY LIMIT
-    // -----------------------------------------
-
-    if (servedCount >= MAX_DAILY_SERVINGS) {
+    if (
+      servedCount >=
+      MAX_DAILY_SERVINGS
+    ) {
       throw new AppError(
         409,
         `${staff.firstName} ${staff.lastName} has already received the maximum of ${MAX_DAILY_SERVINGS} meal servings for today.`,
       );
     }
-
-    // -----------------------------------------
-    // 6. CALCULATE REMAINING
-    // -----------------------------------------
-
-    const remainingServings =
-      MAX_DAILY_SERVINGS - servedCount;
-
-    // -----------------------------------------
-    // 7. RETURN PREVIEW
-    // -----------------------------------------
 
     return {
       staff: {
@@ -113,165 +85,83 @@ export class AttendanceService {
 
       serving: {
         servedCount,
-        remainingServings,
-        maxDailyServings: MAX_DAILY_SERVINGS,
+        remainingServings:
+          MAX_DAILY_SERVINGS -
+          servedCount,
+        maxDailyServings:
+          MAX_DAILY_SERVINGS,
       },
     };
   }
 
-
   // =========================================
-  // SERVE MEAL
-  // =========================================
-  // This is called ONLY after the staff member
-  // has been identified and the chef clicks
-  // "Mark as Eaten".
+  // SERVE MEAL — CREATES ATTENDANCE
   // =========================================
 
- async serveMeal(staffId: string) {
+  async serveMeal(staffId: string) {
+    const staff =
+      await this.repository.findStaffById(
+        staffId,
+      );
 
-  // =========================================
-  // 1. FIND STAFF
-  // =========================================
+    if (!staff) {
+      throw new AppError(
+        404,
+        "Staff member not found.",
+      );
+    }
 
-  const staff =
-    await this.repository.findStaffById(
-      staffId,
-    );
+    if (!staff.isActive) {
+      throw new AppError(
+        403,
+        "This staff account is inactive.",
+      );
+    }
 
-  if (!staff) {
-    throw new AppError(
-      404,
-      "Staff member not found.",
-    );
-  }
+    const mealSelection =
+      await this.repository.findTodayMealSelection(
+        staff.id,
+      );
 
+    if (!mealSelection) {
+      throw new AppError(
+        409,
+        `${staff.firstName} ${staff.lastName} has not selected a meal for today.`,
+      );
+    }
 
-  // =========================================
-  // 2. CHECK STAFF STATUS
-  // =========================================
+    const result =
+      await this.repository
+        .createAttendanceIfAvailable(
+          staff.id,
+        );
 
-  if (!staff.isActive) {
-    throw new AppError(
-      403,
-      "This staff account is inactive.",
-    );
-  }
+    if (!result.created) {
+      throw new AppError(
+        409,
+        `${staff.firstName} ${staff.lastName} has already received the maximum of ${MAX_DAILY_SERVINGS} meal servings for today.`,
+      );
+    }
 
+    const io = getSocket();
 
-  // =========================================
-  // 3. FIND TODAY'S MEAL
-  // =========================================
-
-  const mealSelection =
-    await this.repository.findTodayMealSelection(
-      staff.id,
-    );
-
-  if (!mealSelection) {
-    throw new AppError(
-      409,
-      `${staff.firstName} ${staff.lastName} has not selected a meal for today.`,
-    );
-  }
-
-
-  // =========================================
-  // 4. ATOMICALLY CREATE SERVING
-  // =========================================
-
-  const result =
-    await this.repository.createAttendanceIfAvailable(
-      staff.id,
-    );
-
-
-  // =========================================
-  // 5. MAXIMUM REACHED
-  // =========================================
-
-  if (!result.created) {
-    throw new AppError(
-      409,
-      `${staff.firstName} ${staff.lastName} has already received the maximum of 3 meal servings for today.`,
-    );
-  }
-
-
-  // =========================================
-  // 6. SOCKET.IO EVENT
-  // =========================================
-
-  const io = getSocket();
-
-  io.emit("attendance:new", {
-    attendanceId:
-      result.attendance.id,
-
-    staff: {
-      id: staff.id,
-      staffNumber: staff.staffNumber,
-      firstName: staff.firstName,
-      lastName: staff.lastName,
-      department: staff.department,
-    },
-
-    meal: {
-      id:
-        mealSelection.foodOption.id,
-
-      name:
-        mealSelection.foodOption.name,
-
-      image:
-        mealSelection.foodOption.image,
-    },
-
-    servingNumber:
-      result.servedCount,
-
-    servedCount:
-      result.servedCount,
-
-    remainingServings:
-      result.remainingServings,
-
-    scannedAt:
-      result.attendance.scannedAt,
-  });
-
-
-  // =========================================
-  // 7. RETURN RESULT
-  // =========================================
-
-  return {
-    staff: {
-      id: staff.id,
-      staffNumber: staff.staffNumber,
-      firstName: staff.firstName,
-      lastName: staff.lastName,
-      department: staff.department,
-      qrImage: staff.qrImage,
-    },
-
-    meal: {
-      id:
-        mealSelection.foodOption.id,
-
-      name:
-        mealSelection.foodOption.name,
-
-      image:
-        mealSelection.foodOption.image,
-    },
-
-    attendance: {
-      id:
+    io.emit("attendance:new", {
+      attendanceId:
         result.attendance.id,
 
-      scannedAt:
-        result.attendance.scannedAt,
+      staff: {
+        id: staff.id,
+        staffNumber: staff.staffNumber,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        department: staff.department,
+      },
+
+      meal: {
+        id: mealSelection.foodOption.id,
+        name: mealSelection.foodOption.name,
+        image: mealSelection.foodOption.image,
+      },
 
       servingNumber:
         result.servedCount,
@@ -282,11 +172,41 @@ export class AttendanceService {
       remainingServings:
         result.remainingServings,
 
-      maxDailyServings: 3,
-    },
-  };
-}
+      scannedAt:
+        result.attendance.scannedAt,
+    });
 
+    return {
+      staff: {
+        id: staff.id,
+        staffNumber: staff.staffNumber,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        department: staff.department,
+        qrImage: staff.qrImage,
+      },
+
+      meal: {
+        id: mealSelection.foodOption.id,
+        name: mealSelection.foodOption.name,
+        image: mealSelection.foodOption.image,
+      },
+
+      attendance: {
+        id: result.attendance.id,
+        scannedAt:
+          result.attendance.scannedAt,
+        servingNumber:
+          result.servedCount,
+        servedCount:
+          result.servedCount,
+        remainingServings:
+          result.remainingServings,
+        maxDailyServings:
+          MAX_DAILY_SERVINGS,
+      },
+    };
+  }
 
   // =========================================
   // TODAY
@@ -296,7 +216,6 @@ export class AttendanceService {
     return this.repository.findTodayAttendance();
   }
 
-
   // =========================================
   // HISTORY
   // =========================================
@@ -305,7 +224,6 @@ export class AttendanceService {
     return this.repository.findAttendanceHistory();
   }
 
-
   // =========================================
   // STAFF ATTENDANCE
   // =========================================
@@ -313,18 +231,18 @@ export class AttendanceService {
   async getStaffAttendance(
     staffId: string,
   ) {
-    const staff =
+    const attendance =
       await this.repository.findStaffAttendance(
         staffId,
       );
 
-    if (!staff.length) {
+    if (!attendance.length) {
       throw new AppError(
         404,
         "No attendance record found for this staff.",
       );
     }
 
-    return staff;
+    return attendance;
   }
 }

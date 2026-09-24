@@ -1,3 +1,6 @@
-export interface ScanAttendanceDto {
-  qrCodeId: string;
-}
+import type {
+  ScanAttendanceInput,
+} from "./schema";
+
+export type ScanAttendanceDto =
+  ScanAttendanceInput;
