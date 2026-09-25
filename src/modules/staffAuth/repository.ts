@@ -3,166 +3,75 @@ import { prisma } from "../../config/prisma";
 
 export class StaffAuthRepository {
 
-  // ===============================
+  // ==========================================
   // STAFF
-  // ===============================
+  // ==========================================
 
   findStaffByNumber(
     staffNumber: string,
   ) {
-
     return prisma.staff.findUnique({
-
       where: {
         staffNumber,
       },
 
-    });
-
-  }
-
-
-  findStaffByPhone(
-    phoneNumber: string,
-  ) {
-
-    return prisma.staff.findUnique({
-
-      where: {
-        phoneNumber,
+      include: {
+        user: true,
       },
-
     });
-
   }
 
-  findStaffById(staffId: string) {
+
+  findStaffById(
+    staffId: string,
+  ) {
     return prisma.staff.findUnique({
       where: {
         id: staffId,
       },
+
+      include: {
+        user: true,
+      },
     });
   }
 
 
-  updatePhoneNumber(
-    staffId: string,
-    phoneNumber: string,
+  // ==========================================
+  // UPDATE STAFF USER PASSWORD
+  // ==========================================
+
+  updateUserPassword(
+    userId: string,
+    hashedPassword: string,
   ) {
-
-    return prisma.staff.update({
-
+    return prisma.user.update({
       where: {
-        id: staffId,
+        id: userId,
       },
 
       data: {
-        phoneNumber,
+        password: hashedPassword,
       },
-
     });
-
   }
 
 
-  // ===============================
-  // OTP
-  // ===============================
+  // ==========================================
+  // CREATE USER PASSWORD
+  // ==========================================
 
-  async invalidatePreviousOtps(
+  createUserForStaff(
     staffId: string,
+    hashedPassword: string,
   ) {
-
-    return prisma.staffOtp.updateMany({
-
-      where: {
-
+    return prisma.user.create({
+      data: {
         staffId,
-
-        verifiedAt: null,
-
+        password: hashedPassword,
+        role: "USER",
+        isActive: true,
       },
-
-      data: {
-
-        // Mark old OTPs as no longer usable
-        verifiedAt: new Date(),
-
-      },
-
     });
-
   }
-
-
-  createOtp(
-    data: {
-
-      staffId: string;
-
-      code: string;
-
-      expiresAt: Date;
-
-    },
-  ) {
-
-    return prisma.staffOtp.create({
-
-      data,
-
-    });
-
-  }
-
-
-  findLatestValidOtp(
-    staffId: string,
-  ) {
-
-    return prisma.staffOtp.findFirst({
-
-      where: {
-
-        staffId,
-
-        verifiedAt: null,
-
-        expiresAt: {
-
-          gt: new Date(),
-
-        },
-
-      },
-
-      orderBy: {
-
-        createdAt: "desc",
-
-      },
-
-    });
-
-  }
-
-
-  markOtpVerified(
-    id: string,
-  ) {
-
-    return prisma.staffOtp.update({
-
-      where: {
-        id,
-      },
-
-      data: {
-        verifiedAt: new Date(),
-      },
-
-    });
-
-  }
-
 }

@@ -27,12 +27,12 @@ model Staff {
   qrCodeId String  @unique
   qrImage  String
   isActive Boolean @default(true)
+  hasActivedAccount Boolean @default(false)
 
   // Relations
   user        User?
   attendances Attendance[]
   selections  MealSelection[]
-  otps        StaffOtp[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -112,23 +112,4 @@ model MealSelection {
   @@index([staffId])
   @@index([foodOptionId])
   @@index([mealDate])
-}
-
-model StaffOtp {
-  id String @id @default(uuid())
-
-  staffId String
-
-  code String
-
-  expiresAt DateTime
-
-  verifiedAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
-
-  @@index([staffId])
-  @@index([expiresAt])
 }

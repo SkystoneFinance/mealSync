@@ -19,38 +19,45 @@ export async function staffAuthRoutes(
   app: FastifyInstance,
 ) {
 
-  // =================================
+  // ==========================================
   // CURRENT STAFF PROFILE
-  // =================================
+  // ==========================================
 
   app.get(
     "/me",
+
     {
       preHandler: [
         authenticate,
       ],
     },
+
     controller.me.bind(controller),
   );
 
 
-  // =================================
+  // ==========================================
   // FIRST-TIME ACTIVATION
-  // =================================
+  // ==========================================
 
   app.post(
     "/activate",
-    controller.activate.bind(controller),
+
+    controller.activate.bind(
+      controller,
+    ),
   );
 
 
-  // =================================
-  // VERIFY OTP + LOGIN
-  // =================================
+  // ==========================================
+  // STAFF LOGIN
+  // ==========================================
 
   app.post(
-    "/verify-otp",
-    controller.verifyOtp.bind(controller),
-  );
+    "/login",
 
+    controller.login.bind(
+      controller,
+    ),
+  );
 }

@@ -7,7 +7,7 @@ import { validate } from "../../plugins/zod";
 
 import {
   activateStaffSchema,
-  verifyStaffOtpSchema,
+  staffLoginSchema,
 } from "./schema";
 
 import {
@@ -16,7 +16,7 @@ import {
 
 import type {
   ActivateStaffDto,
-  VerifyStaffOtpDto,
+  StaffLoginDto,
 } from "./types";
 
 
@@ -25,6 +25,10 @@ export class StaffAuthController {
   private readonly service =
     new StaffAuthService();
 
+
+  // ==========================================
+  // FIRST-TIME ACTIVATION
+  // ==========================================
 
   async activate(
 
@@ -46,7 +50,7 @@ export class StaffAuthController {
     const result =
       await this.service.activate(
         body.staffNumber,
-        body.phoneNumber,
+        body.pin,
       );
 
 
@@ -58,14 +62,17 @@ export class StaffAuthController {
         result.message,
 
     });
-
   }
 
 
-  async verifyOtp(
+  // ==========================================
+  // STAFF LOGIN
+  // ==========================================
+
+  async login(
 
     request: FastifyRequest<{
-      Body: VerifyStaffOtpDto;
+      Body: StaffLoginDto;
     }>,
 
     reply: FastifyReply,
@@ -74,18 +81,21 @@ export class StaffAuthController {
 
     const body =
       await validate(
-        verifyStaffOtpSchema,
+        staffLoginSchema,
         request.body,
       );
 
 
     const staff =
-      await this.service.verifyOtp(
+      await this.service.login(
         body.staffNumber,
-        body.phoneNumber,
-        body.code,
+        body.pin,
       );
 
+
+    // ----------------------------------------
+    // CREATE JWT
+    // ----------------------------------------
 
     const token =
       request.server.jwt.sign({
@@ -140,39 +150,42 @@ export class StaffAuthController {
       },
 
     });
-
   }
 
+
+  // ==========================================
+  // CURRENT STAFF PROFILE
+  // ==========================================
+
   async me(
-  request: FastifyRequest,
-  reply: FastifyReply,
-) {
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) {
 
-  const user =
-    request.user as {
-      staffId?: string;
-      id: string;
-      role: string;
-    };
-
-
-  const staffId =
-    user.staffId ?? user.id;
+    const user =
+      request.user as {
+        staffId?: string;
+        id: string;
+        role: string;
+      };
 
 
-  const profile =
-    await this.service.getProfile(
-      staffId,
-    );
+    const staffId =
+      user.staffId ?? user.id;
 
 
-  return reply.send({
+    const profile =
+      await this.service.getProfile(
+        staffId,
+      );
 
-    success: true,
 
-    data: profile,
+    return reply.send({
 
-  });
+      success: true,
 
+      data: profile,
+
+    });
+  }
 }
-} 

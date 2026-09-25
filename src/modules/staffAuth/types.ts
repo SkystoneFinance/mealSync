@@ -1,10 +1,11 @@
 export interface ActivateStaffDto {
   staffNumber: string;
-  phoneNumber: string;
+  pin: string;
+  confirmPin: string;
 }
 
-export interface VerifyStaffOtpDto {
+
+export interface StaffLoginDto {
   staffNumber: string;
-  phoneNumber: string;
-  code: string;
+  pin: string;
 }

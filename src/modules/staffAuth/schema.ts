@@ -1,28 +1,71 @@
 import { z } from "zod";
 
-export const activateStaffSchema = z.object({
+
+// ==========================================
+// FIRST-TIME STAFF ACTIVATION
+// ==========================================
+
+export const activateStaffSchema = z
+  .object({
+    staffNumber: z
+      .string()
+      .min(
+        1,
+        "Staff number is required",
+      ),
+
+    pin: z
+      .string()
+      .length(
+        4,
+        "PIN must be exactly 4 digits",
+      )
+      .regex(
+        /^\d+$/,
+        "PIN must contain only numbers",
+      ),
+
+    confirmPin: z
+      .string()
+      .length(
+        4,
+        "PIN confirmation must be exactly 4 digits",
+      )
+      .regex(
+        /^\d+$/,
+        "PIN confirmation must contain only numbers",
+      ),
+  })
+  .refine(
+    (data) =>
+      data.pin === data.confirmPin,
+    {
+      message: "PINs do not match",
+      path: ["confirmPin"],
+    },
+  );
+
+
+// ==========================================
+// STAFF LOGIN
+// ==========================================
+
+export const staffLoginSchema = z.object({
   staffNumber: z
     .string()
-    .min(1, "Staff number is required"),
+    .min(
+      1,
+      "Staff number is required",
+    ),
 
-  phoneNumber: z
+  pin: z
     .string()
-    .min(10, "Valid phone number is required")
-    .max(15, "Invalid phone number"),
-});
-
-export const verifyStaffOtpSchema = z.object({
-  staffNumber: z
-    .string()
-    .min(1, "Staff number is required"),
-
-  phoneNumber: z
-    .string()
-    .min(10, "Valid phone number is required")
-    .max(15, "Invalid phone number"),
-
-  code: z
-    .string()
-    .length(6, "OTP must be 6 digits")
-    .regex(/^\d+$/, "OTP must contain only numbers"),
+    .length(
+      4,
+      "PIN must be exactly 4 digits",
+    )
+    .regex(
+      /^\d+$/,
+      "PIN must contain only numbers",
+    ),
 });

@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import bcrypt from "bcrypt";
 
 import {
@@ -16,30 +15,18 @@ export class StaffAuthService {
     new StaffAuthRepository();
 
 
-  // ===============================
-  // GENERATE SECURE OTP
-  // ===============================
-
-  private generateOtp() {
-
-    return crypto
-      .randomInt(
-        100000,
-        1000000,
-      )
-      .toString();
-
-  }
-
-
-  // ===============================
-  // ACTIVATE STAFF / SEND OTP
-  // ===============================
+  // ==========================================
+  // FIRST-TIME STAFF ACTIVATION
+  // ==========================================
 
   async activate(
     staffNumber: string,
-    phoneNumber: string,
+    pin: string,
   ) {
+
+    // ----------------------------------------
+    // FIND STAFF
+    // ----------------------------------------
 
     const staff =
       await this.repo.findStaffByNumber(
@@ -47,185 +34,113 @@ export class StaffAuthService {
       );
 
 
-    // -------------------------------
-    // STAFF EXISTS?
-    // -------------------------------
-
     if (!staff) {
-
       throw new AppError(
         404,
-        "Staff number not found",
+        "Staff number not found.",
       );
-
     }
 
 
-    // -------------------------------
-    // STAFF ACTIVE?
-    // -------------------------------
+    // ----------------------------------------
+    // CHECK STAFF STATUS
+    // ----------------------------------------
 
     if (!staff.isActive) {
-
       throw new AppError(
         403,
-        "Staff account is inactive",
+        "Staff account is inactive.",
       );
-
     }
 
 
-    // -------------------------------
-    // PHONE ALREADY BELONGS TO STAFF?
-    // -------------------------------
+    // ----------------------------------------
+    // CHECK USER ACCOUNT
+    // ----------------------------------------
 
-    if (
-      staff.phoneNumber &&
-      staff.phoneNumber !== phoneNumber
-    ) {
-
-      throw new AppError(
-        409,
-        "This staff account is already linked to another phone number",
-      );
-
-    }
+    const user =
+      staff.user;
 
 
-    // -------------------------------
-    // PHONE BELONGS TO ANOTHER STAFF?
-    // -------------------------------
+    // ----------------------------------------
+    // USER DOES NOT EXIST
+    // ----------------------------------------
 
-    const existingStaff =
-      await this.repo.findStaffByPhone(
-        phoneNumber,
-      );
+    if (!user) {
 
-
-    if (
-      existingStaff &&
-      existingStaff.id !== staff.id
-    ) {
-
-      throw new AppError(
-        409,
-        "This phone number is already linked to another staff account",
-      );
-
-    }
+      const hashedPin =
+        await bcrypt.hash(
+          pin,
+          10,
+        );
 
 
-    // -------------------------------
-    // FIRST-TIME ACTIVATION
-    // -------------------------------
-
-    if (!staff.phoneNumber) {
-
-      await this.repo.updatePhoneNumber(
+      await this.repo.createUserForStaff(
         staff.id,
-        phoneNumber,
+        hashedPin,
       );
 
+
+      return {
+        message:
+          "Staff account activated successfully.",
+      };
     }
 
 
-    // -------------------------------
-    // INVALIDATE OLD OTPs
-    // -------------------------------
+    // ----------------------------------------
+    // ACCOUNT ALREADY ACTIVATED
+    // ----------------------------------------
 
-    await this.repo.invalidatePreviousOtps(
-      staff.id,
-    );
+    if (user.password) {
 
-
-    // -------------------------------
-    // GENERATE SECURE OTP
-    // -------------------------------
-
-    const code =
-      this.generateOtp();
+      throw new AppError(
+        409,
+        "Staff account has already been activated. Please login.",
+      );
+    }
 
 
-    // -------------------------------
-    // HASH OTP
-    // -------------------------------
+    // ----------------------------------------
+    // HASH PIN
+    // ----------------------------------------
 
-    const hashedCode =
+    const hashedPin =
       await bcrypt.hash(
-        code,
+        pin,
         10,
       );
 
 
-    // -------------------------------
-    // EXPIRE IN 5 MINUTES
-    // -------------------------------
+    // ----------------------------------------
+    // SAVE PIN
+    // ----------------------------------------
 
-    const expiresAt =
-      new Date(
-        Date.now() + 5 * 60 * 1000,
-      );
-
-
-    // -------------------------------
-    // SAVE HASHED OTP
-    // -------------------------------
-
-    await this.repo.createOtp({
-
-      staffId: staff.id,
-
-      code: hashedCode,
-
-      expiresAt,
-
-    });
-
-
-    // ===============================
-    // DEVELOPMENT ONLY
-    // ===============================
-
-    console.log(
-      `\n🔐 Staff OTP`,
-    );
-
-    console.log(
-      `Staff: ${staff.staffNumber}`,
-    );
-
-    console.log(
-      `Phone: ${phoneNumber}`,
-    );
-
-    console.log(
-      `OTP: ${code}`,
-    );
-
-    console.log(
-      `Expires: ${expiresAt.toLocaleString()}\n`,
+    await this.repo.updateUserPassword(
+      user.id,
+      hashedPin,
     );
 
 
     return {
-
       message:
-        "OTP generated successfully.",
-
+        "Staff account activated successfully.",
     };
-
   }
 
 
-  // ===============================
-  // VERIFY OTP
-  // ===============================
+  // ==========================================
+  // STAFF LOGIN
+  // ==========================================
 
-  async verifyOtp(
+  async login(
     staffNumber: string,
-    phoneNumber: string,
-    code: string,
+    pin: string,
   ) {
+
+    // ----------------------------------------
+    // FIND STAFF
+    // ----------------------------------------
 
     const staff =
       await this.repo.findStaffByNumber(
@@ -233,78 +148,77 @@ export class StaffAuthService {
       );
 
 
-    // -------------------------------
-    // STAFF EXISTS?
-    // -------------------------------
-
     if (!staff) {
-
       throw new AppError(
         404,
-        "Staff number not found",
+        "Staff number not found.",
       );
-
     }
 
 
-    // -------------------------------
-    // STAFF ACTIVE?
-    // -------------------------------
+    // ----------------------------------------
+    // CHECK STAFF STATUS
+    // ----------------------------------------
 
     if (!staff.isActive) {
+      throw new AppError(
+        403,
+        "Staff account is inactive.",
+      );
+    }
+
+
+    // ----------------------------------------
+    // CHECK USER
+    // ----------------------------------------
+
+    const user =
+      staff.user;
+
+
+    if (!user) {
+
+      throw new AppError(
+        401,
+        "Staff account has not been activated yet.",
+      );
+    }
+
+
+    // ----------------------------------------
+    // CHECK USER STATUS
+    // ----------------------------------------
+
+    if (!user.isActive) {
 
       throw new AppError(
         403,
-        "Staff account is inactive",
+        "Staff account is inactive.",
       );
-
     }
 
 
-    // -------------------------------
-    // PHONE MATCH?
-    // -------------------------------
+    // ----------------------------------------
+    // CHECK PASSWORD/PIN
+    // ----------------------------------------
 
-    if (
-      staff.phoneNumber !== phoneNumber
-    ) {
+    if (!user.password) {
 
       throw new AppError(
         401,
-        "Phone number does not match this staff account",
+        "Staff account has not been activated yet.",
       );
-
     }
 
 
-    // -------------------------------
-    // GET LATEST VALID OTP
-    // -------------------------------
-
-    const otp =
-      await this.repo.findLatestValidOtp(
-        staff.id,
-      );
-
-
-    if (!otp) {
-
-      throw new AppError(
-        401,
-        "Invalid or expired OTP",
-      );
-
-    }
-
-
-    // -------------------------------
-    // COMPARE HASHED OTP
-    // -------------------------------
+    // ----------------------------------------
+    // VERIFY PIN
+    // ----------------------------------------
 
     const isValid =
       await bcrypt.compare(
-        code,
-        otp.code,
+        pin,
+        user.password,
       );
 
 
@@ -312,74 +226,67 @@ export class StaffAuthService {
 
       throw new AppError(
         401,
-        "Invalid OTP",
+        "Invalid staff number or PIN.",
       );
-
     }
 
 
-    // -------------------------------
-    // MARK OTP AS USED
-    // -------------------------------
-
-    await this.repo.markOtpVerified(
-      otp.id,
-    );
-
+    // ----------------------------------------
+    // SUCCESS
+    // ----------------------------------------
 
     return staff;
-
-  }
-
-  // ===============================
-  // GET STAFF BY ID
-  // ===============================
-
-  async getProfile(staffId: string) {
-
-  const staff =
-    await this.repo.findStaffById(
-      staffId,
-    );
-
-
-  if (!staff) {
-
-    throw new AppError(
-      404,
-      "Staff profile not found",
-    );
-
   }
 
 
-  return {
+  // ==========================================
+  // GET STAFF PROFILE
+  // ==========================================
 
-    id: staff.id,
+  async getProfile(
+    staffId: string,
+  ) {
 
-    staffNumber:
-      staff.staffNumber,
+    const staff =
+      await this.repo.findStaffById(
+        staffId,
+      );
 
-    firstName:
-      staff.firstName,
 
-    lastName:
-      staff.lastName,
+    if (!staff) {
 
-    department:
-      staff.department,
+      throw new AppError(
+        404,
+        "Staff profile not found.",
+      );
+    }
 
-    phoneNumber:
-      staff.phoneNumber,
 
-    qrImage:
-      staff.qrImage,
+    return {
 
-    isActive:
-      staff.isActive,
+      id: staff.id,
 
-  };
+      staffNumber:
+        staff.staffNumber,
 
-}
+      firstName:
+        staff.firstName,
 
+      lastName:
+        staff.lastName,
+
+      department:
+        staff.department,
+
+      phoneNumber:
+        staff.phoneNumber,
+
+      qrImage:
+        staff.qrImage,
+
+      isActive:
+        staff.isActive,
+
+    };
+  }
 }
