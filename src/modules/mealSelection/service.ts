@@ -14,32 +14,60 @@ export class MealSelectionService {
   // CHECK IF MEAL DATE CAN STILL BE EDITED
   // =========================================
 
-  private validateMealDateIsEditable(
-    mealDate: Date,
+  // =========================================
+// CHECK IF MEAL DATE CAN STILL BE EDITED
+// =========================================
+
+private validateMealDateIsEditable(
+  mealDate: Date,
+) {
+  const now = new Date();
+
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+
+  const selectedDate = new Date(
+    mealDate.getFullYear(),
+    mealDate.getMonth(),
+    mealDate.getDate(),
+  );
+
+
+  // =========================================
+  // CURRENT MONDAY IS ALWAYS OPEN
+  // =========================================
+
+  const isTodayMonday =
+    today.getDay() === 1;
+
+  const isSelectedDateToday =
+    selectedDate.getTime() === today.getTime();
+
+
+  if (
+    isTodayMonday &&
+    isSelectedDateToday
   ) {
-    const now = new Date();
-
-    const today = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-
-    const selectedDate = new Date(
-      mealDate.getFullYear(),
-      mealDate.getMonth(),
-      mealDate.getDate(),
-    );
-
-
-    // Today and all past dates are locked
-    if (selectedDate <= today) {
-      throw new AppError(
-        400,
-        "Meal selection is locked for this date",
-      );
-    }
+    return;
   }
+
+
+  // =========================================
+  // TODAY AND ALL PAST DATES ARE LOCKED
+  // =========================================
+
+  if (selectedDate <= today) {
+
+    throw new AppError(
+      400,
+      "Meal selection is locked for this date",
+    );
+
+  }
+}
 
 
   // =========================================
