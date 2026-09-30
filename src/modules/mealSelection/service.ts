@@ -18,7 +18,12 @@ export class MealSelectionService {
 // CHECK IF MEAL DATE CAN STILL BE EDITED
 // =========================================
 
-private validateMealDateIsEditable(
+// =========================================
+// CHECK IF MEAL DATE CAN STILL BE EDITED
+// =========================================
+
+private async validateMealDateIsEditable(
+  staffId: string,
   mealDate: Date,
 ) {
   const now = new Date();
@@ -35,37 +40,39 @@ private validateMealDateIsEditable(
     mealDate.getDate(),
   );
 
-
   // =========================================
-  // CURRENT MONDAY IS ALWAYS OPEN
-  // =========================================
-
-  const isTodayMonday =
-    today.getDay() === 1;
-
-  const isSelectedDateToday =
-    selectedDate.getTime() === today.getTime();
-
-
-  if (
-    isTodayMonday &&
-    isSelectedDateToday
-  ) {
-    return;
-  }
-
-
-  // =========================================
-  // TODAY AND ALL PAST DATES ARE LOCKED
+  // PAST DATES ARE ALWAYS LOCKED
   // =========================================
 
-  if (selectedDate <= today) {
-
+  if (selectedDate < today) {
     throw new AppError(
       400,
       "Meal selection is locked for this date",
     );
+  }
 
+  // =========================================
+  // CHECK IF STAFF ALREADY SELECTED THIS DATE
+  // =========================================
+
+  const existing =
+    await this.repo.findByStaffAndDate(
+      staffId,
+      mealDate,
+    );
+
+  // =========================================
+  // TODAY
+  // =========================================
+
+  if (
+    selectedDate.getTime() === today.getTime() &&
+    existing
+  ) {
+    throw new AppError(
+      400,
+      "Meal selection is locked for this date",
+    );
   }
 }
 
@@ -99,9 +106,10 @@ private validateMealDateIsEditable(
 
 
     // 🔒 CHECK DATE LOCK
-    this.validateMealDateIsEditable(
-      mealDate,
-    );
+   await this.validateMealDateIsEditable(
+  staffId,
+  mealDate,
+);
 
 
     const foodOption =
@@ -243,9 +251,10 @@ private validateMealDateIsEditable(
     // 🔒 CHECK THE DATE OF THE EXISTING
     // SELECTION BEFORE ALLOWING CHANGE
 
-    this.validateMealDateIsEditable(
-      selection.mealDate,
-    );
+    await this.validateMealDateIsEditable(
+  selection.staffId,
+  selection.mealDate,
+);
 
 
     const foodOption =
@@ -287,7 +296,8 @@ private validateMealDateIsEditable(
     // 🔒 ALSO PREVENT DELETING
     // TODAY'S / PAST SELECTION
 
-    this.validateMealDateIsEditable(
+    await this.validateMealDateIsEditable(
+      selection.staffId,
       selection.mealDate,
     );
 
