@@ -153,3 +153,20 @@ model WeeklySubmission {
   @@unique([staffId, menuWeekId])
   @@index([menuWeekId])
 }
+
+// Our own photo of a dish, taken by the chef on the day it's served.
+// One per dish name (normalised), reused for every past and future
+// FoodOption with that name, whose `image` then points at
+// GET /api/v1/dish-photos/:id/image instead of an outside URL.
+model DishPhoto {
+  id String @id @default(uuid())
+
+  nameKey  String @unique // e.g. "fried rice and chicken"
+  mimeType String
+  data     Bytes
+
+  uploadedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

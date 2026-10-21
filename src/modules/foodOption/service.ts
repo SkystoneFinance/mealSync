@@ -1,4 +1,9 @@
 import { prisma } from "../../config/prisma";
+import {
+  DishPhotoService,
+  isOwnPhoto,
+  photoImagePath,
+} from "../dishPhoto/service";
 import { AppError } from "../../utils/error";
 
 import {
@@ -15,6 +20,9 @@ export class FoodOptionService {
 
   private readonly repo =
     new FoodOptionRepository();
+
+  private readonly photos =
+    new DishPhotoService();
 
 
   async create(
@@ -43,12 +51,36 @@ export class FoodOptionService {
 
       name: data.name,
 
-      image: data.image,
+      image: await this.resolveImage(
+        data.name,
+        data.image,
+      ),
 
       mealDate,
 
     });
 
+  }
+
+
+  // Use our own photo for this dish name if we have one, otherwise the
+  // pasted URL (outside URLs are being phased out as photos are taken)
+  private async resolveImage(name: string, url?: string) {
+    const photo = await this.photos.findForName(name);
+
+    if (photo) {
+      return photoImagePath(photo);
+    }
+
+    // A renamed dish loses the other dish's photo
+    if (!url || isOwnPhoto(url)) {
+      throw new AppError(
+        400,
+        "Add an image URL. You can replace it with a photo on the day.",
+      );
+    }
+
+    return url;
   }
 
 
@@ -114,7 +146,7 @@ export class FoodOptionService {
     data: UpdateFoodOptionDto,
   ) {
 
-    await this.getById(id);
+    const existing = await this.getById(id);
 
 
     let mealDate:
@@ -152,8 +184,12 @@ export class FoodOptionService {
           name: data.name,
         }),
 
-        ...(data.image !== undefined && {
-          image: data.image,
+        // Our own photo (matched by name) always wins over a pasted URL
+        ...((data.image !== undefined || data.name !== undefined) && {
+          image: await this.resolveImage(
+            data.name ?? existing.name,
+            data.image ?? existing.image,
+          ),
         }),
 
         ...(mealDate !== undefined && {

@@ -55,6 +55,15 @@ Staff 1 ──── *    WeeklySubmission * ──── 1 MenuWeek
 
 Written only by `PUT /meal-plan`. Rows only count for a week if the staff member has a `WeeklySubmission` for it.
 
+### `DishPhoto` — our own photo of a dish
+| Field | Notes |
+|---|---|
+| `nameKey` | Normalised dish name, unique (e.g. "fried rice and chicken") |
+| `mimeType`, `data` | The image (bytea, ~200–400 KB after the app resizes it) |
+| `uploadedById` | User who took it |
+
+`FoodOption.image` holds either a pasted outside URL or `/api/v1/dish-photos/<id>/image?v=…` once we have a photo.
+
 ### `MenuWeek` — one row per planned week
 | Field | Notes |
 |---|---|
@@ -86,7 +95,7 @@ and users are in another zone, the day boundary is shifted. Keep the server TZ a
 ## Migrations
 
 History in `prisma/migrations/` (oldest first): init → staff schema → mealsyncs → QR image → auth →
-food selection → food option meal date → staff phone/OTP → remove OTP, add activation status → **weekly meal planning** (2026-10-21: `noMeal`, nullable `foodOptionId`, `MenuWeek`, `WeeklySubmission`; additive only).
+food selection → food option meal date → staff phone/OTP → remove OTP, add activation status → **weekly meal planning** (2026-10-21: `noMeal`, nullable `foodOptionId`, `MenuWeek`, `WeeklySubmission`; additive only) → **dish photos** (`DishPhoto`, additive).
 
 | Task | Command |
 |---|---|

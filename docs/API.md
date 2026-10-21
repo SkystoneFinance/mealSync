@@ -60,7 +60,9 @@ Auth column legend: **Public** = no token checked · **Token** = any valid JWT �
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/food-options` | Admin | Create `{ name, image, mealDate }` — `image` is a string (URL or data-URL) |
+| POST | `/food-options` | Admin | Create `{ name, image?, mealDate }`. If we have our own photo for this dish name it is used automatically; otherwise `image` (any pasted URL) is required |
+| GET | `/food-options/photo-status` | Admin | Today's dishes with `hasOwnPhoto`, and `upcoming: { total, ownPhotos }` (switch-over progress) |
+| POST | `/food-options/:id/photo` | Admin | Multipart field `photo` (JPEG/PNG/WebP, ≤ 3 MB). Only on or after the dish's date. Saves it as our photo for that dish **name** and points every past and future dish with that name at it |
 | GET | `/food-options` | Token | All options |
 | GET | `/food-options/date?date=YYYY-MM-DD` | Token | Options for one day |
 | GET | `/food-options/summary?date=YYYY-MM-DD` | Token | Options for a day with `selectionCount` each + `totalSelections` (kitchen demand) |
@@ -135,6 +137,15 @@ Weeks start on **Monday**.
 | GET | `/reports/departments` | Admin | By department |
 | GET | `/reports/staff-summary?period=today\|weekly\|monthly` | Admin | Per-staff meal counts (default `today`) |
 | GET | `/reports/export?period=` | Admin | `.xlsx` download. `period` = `today` \| `current-week` \| `previous-week` \| `current-month` \| `previous-month` |
+
+## Dish photos: `src/modules/dishPhoto`
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/dish-photos/:id/image` | Public | The photo bytes (for `<img>`; cached for a year, URLs carry a `?v=` version) |
+
+Dishes using our photo have `image` = `/api/v1/dish-photos/<id>/image?v=…`; the frontend prefixes the API origin.
+Names are matched case- and punctuation-insensitively (`&` = "and").
 
 ## Real-time events (Socket.IO)
 
