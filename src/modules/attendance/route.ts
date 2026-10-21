@@ -1,10 +1,19 @@
 import type { FastifyInstance } from "fastify";
 
 import { AttendanceController } from "./controller";
+import { authenticate } from "../../middleware/auth";
+import { authorize } from "../../middleware/authorize";
 
 export async function attendanceRoutes(
   app: FastifyInstance,
 ) {
+
+  // Every route below: logged-in ADMIN or SUPER_ADMIN only
+  app.addHook("preHandler", authenticate);
+  app.addHook(
+    "preHandler",
+    authorize("ADMIN", "SUPER_ADMIN"),
+  );
   const controller =
     new AttendanceController();
 

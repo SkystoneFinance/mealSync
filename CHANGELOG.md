@@ -9,6 +9,11 @@ Sections: **Added** · **Changed** · **Fixed** · **Removed** · **Security** �
 
 ## [Unreleased]
 
+### Security
+- Staff management routes (`/staff`, except `/staff/me`) now require a SUPER_ADMIN token. Attendance, dashboard and reports routes require ADMIN or SUPER_ADMIN. Previously they were open to anyone.
+
+## 2026-10-20
+
 ### Added
 - `POST /api/v1/auth/refresh`: swaps a valid admin or staff token for a fresh one after re-checking the account is still active (sliding sessions).
 - Project documentation: `README.md`, `docs/API.md`, `docs/DATABASE.md`, `CHANGELOG.md`, `.env.example`, `CLAUDE.md`.

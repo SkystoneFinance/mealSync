@@ -23,8 +23,6 @@ anything else returns `500 Internal Server Error` (see `src/plugins/error-handle
 
 Auth column legend: **Public** = no token checked · **Token** = any valid JWT · **Admin** = `ADMIN` or `SUPER_ADMIN` · **Super** = `SUPER_ADMIN` only.
 
-> ⚠️ Many admin endpoints are currently **Public** on the server side — the frontend hides them,
-> but the API does not enforce it. See [KNOWN_ISSUES in the frontend repo](https://github.com/SkystoneFinance/Sky-MealSync/blob/main/docs/KNOWN_ISSUES.md).
 
 ---
 
@@ -49,13 +47,13 @@ Auth column legend: **Public** = no token checked · **Token** = any valid JWT �
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/staff` | ⚠️ Public | Create staff `{ staffNumber, firstName, lastName, department }`. Generates `qrCodeId` (UUID) and a QR PNG data-URL. |
-| POST | `/staff/import` | ⚠️ Public | Multipart `.xlsx` upload. Sheet 1, from row 2: col A staff number, B first name, C last name, D department. Duplicates / incomplete rows are skipped. Returns `{ imported, skipped }`. |
-| GET | `/staff` | ⚠️ Public | List all staff |
+| POST | `/staff` | Super | Create staff `{ staffNumber, firstName, lastName, department }`. Generates `qrCodeId` (UUID) and a QR PNG data-URL. |
+| POST | `/staff/import` | Super | Multipart `.xlsx` upload. Sheet 1, from row 2: col A staff number, B first name, C last name, D department. Duplicates / incomplete rows are skipped. Returns `{ imported, skipped }`. |
+| GET | `/staff` | Super | List all staff |
 | GET | `/staff/me` | Token | Staff linked to the current user |
-| GET | `/staff/:id` | ⚠️ Public | One staff member |
-| PATCH | `/staff/:id` | ⚠️ Public | Update fields incl. `isActive` |
-| DELETE | `/staff/:id` | ⚠️ Public | Delete (cascades to attendance and meal selections) |
+| GET | `/staff/:id` | Super | One staff member |
+| PATCH | `/staff/:id` | Super | Update fields incl. `isActive` |
+| DELETE | `/staff/:id` | Super | Delete (cascades to attendance and meal selections) |
 
 ## Food options (menu) — `src/modules/foodOption`
 
@@ -90,11 +88,11 @@ Food option must be `isActive`. ⚠️ PATCH/DELETE do not check that the select
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/attendance/scan` | ⚠️ Public | `{ qrCodeId }` → **preview only**: staff, today's selected meal, servings used/remaining. Errors if QR invalid, staff inactive, no meal selected, or limit reached. |
-| POST | `/attendance/serve` | ⚠️ Public | `{ staffId }` → creates an `Attendance` row (in a transaction with retries), emits socket event `attendance:new` |
-| GET | `/attendance/today` | ⚠️ Public | Today's attendance |
-| GET | `/attendance/history` | ⚠️ Public | All attendance |
-| GET | `/attendance/staff/:staffId` | ⚠️ Public | One staff member's attendance (404 if none) |
+| POST | `/attendance/scan` | Admin | `{ qrCodeId }` → **preview only**: staff, today's selected meal, servings used/remaining. Errors if QR invalid, staff inactive, no meal selected, or limit reached. |
+| POST | `/attendance/serve` | Admin | `{ staffId }` → creates an `Attendance` row (in a transaction with retries), emits socket event `attendance:new` |
+| GET | `/attendance/today` | Admin | Today's attendance |
+| GET | `/attendance/history` | Admin | All attendance |
+| GET | `/attendance/staff/:staffId` | Admin | One staff member's attendance (404 if none) |
 
 **Serving limit:** `MAX_DAILY_SERVINGS = 3` per staff per day (`attendance/constants.ts`).
 
@@ -102,9 +100,9 @@ Food option must be `isActive`. ⚠️ PATCH/DELETE do not check that the select
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/dashboard` | ⚠️ Public | `{ totalStaff, activeStaff, inactiveStaff, mealsServedToday }` |
-| GET | `/dashboard/recent-attendance` | ⚠️ Public | Latest 10 servings |
-| GET | `/dashboard/department-summary` | ⚠️ Public | Staff headcount per department |
+| GET | `/dashboard` | Admin | `{ totalStaff, activeStaff, inactiveStaff, mealsServedToday }` |
+| GET | `/dashboard/recent-attendance` | Admin | Latest 10 servings |
+| GET | `/dashboard/department-summary` | Admin | Staff headcount per department |
 
 ## Reports — `src/modules/reports`
 
@@ -112,12 +110,12 @@ Weeks start on **Monday**.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/reports/today` | ⚠️ Public | Today's report |
-| GET | `/reports/weekly` | ⚠️ Public | Current week |
-| GET | `/reports/monthly` | ⚠️ Public | Current month |
-| GET | `/reports/departments` | ⚠️ Public | By department |
-| GET | `/reports/staff-summary?period=today\|weekly\|monthly` | ⚠️ Public | Per-staff meal counts (default `today`) |
-| GET | `/reports/export?period=` | ⚠️ Public | `.xlsx` download. `period` = `today` \| `current-week` \| `previous-week` \| `current-month` \| `previous-month` |
+| GET | `/reports/today` | Admin | Today's report |
+| GET | `/reports/weekly` | Admin | Current week |
+| GET | `/reports/monthly` | Admin | Current month |
+| GET | `/reports/departments` | Admin | By department |
+| GET | `/reports/staff-summary?period=today\|weekly\|monthly` | Admin | Per-staff meal counts (default `today`) |
+| GET | `/reports/export?period=` | Admin | `.xlsx` download. `period` = `today` \| `current-week` \| `previous-week` \| `current-month` \| `previous-month` |
 
 ## Real-time events (Socket.IO)
 
