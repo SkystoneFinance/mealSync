@@ -19,6 +19,10 @@ import type {
   StaffLoginDto,
 } from "./types";
 
+import {
+  staffTokenPayload,
+} from "../auth/tokens";
+
 
 export class StaffAuthController {
 
@@ -98,24 +102,9 @@ export class StaffAuthController {
     // ----------------------------------------
 
     const token =
-      request.server.jwt.sign({
-
-        id: staff.id,
-
-        staffId: staff.id,
-
-        role: "USER",
-
-        staffNumber:
-          staff.staffNumber,
-
-        firstName:
-          staff.firstName,
-
-        lastName:
-          staff.lastName,
-
-      });
+      request.server.jwt.sign(
+        staffTokenPayload(staff),
+      );
 
 
     return reply.send({

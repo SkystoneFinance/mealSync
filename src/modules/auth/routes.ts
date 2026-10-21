@@ -67,6 +67,18 @@ controller.me.bind(controller)
 
 
 
+// ANY LOGGED IN USER (ADMIN OR STAFF): SWAP TOKEN FOR A FRESH ONE
+app.post(
+"/refresh",
+{
+preHandler:[
+authenticate
+]
+},
+controller.refresh.bind(controller)
+);
+
+
 // SUPER ADMIN ONLY
 
 app.get(

@@ -12,6 +12,8 @@ import { AuthService } from "./service";
 
 import type { LoginDto } from "./types";
 
+import { adminTokenPayload } from "./tokens";
+
 
 
 export class AuthController {
@@ -48,16 +50,14 @@ export class AuthController {
 
 
     const token =
-      request.server.jwt.sign({
+      request.server.jwt.sign(
+        adminTokenPayload(user),
+      );
 
-        id:user.id,
 
-        email:user.email,
-
-        role:user.role,
-
-      });
-
+    // Never send the password hash to the client
+    const { password: _password, ...safeUser } =
+      user;
 
 
     return reply.send({
@@ -66,7 +66,40 @@ export class AuthController {
 
       token,
 
-      user,
+      user:safeUser,
+
+    });
+
+
+  }
+
+
+
+  // REFRESH SESSION (sliding expiry)
+  async refresh(
+
+    request:FastifyRequest,
+
+    reply:FastifyReply
+
+  ){
+
+
+    const payload =
+      await this.service.refresh(
+        request.user,
+      );
+
+
+    const token =
+      request.server.jwt.sign(payload);
+
+
+    return reply.send({
+
+      success:true,
+
+      token,
 
     });
 
