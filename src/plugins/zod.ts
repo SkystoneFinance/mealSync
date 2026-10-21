@@ -9,7 +9,11 @@ export async function validate<T>(
     return schema.parse(data);
   } catch (error) {
     if (error instanceof ZodError) {
-      throw new Error(error.issues[0].message);
+      // 400 with the first problem, not a generic 500
+      throw new AppError(
+        400,
+        error.issues[0]?.message ?? "Validation failed.",
+      );
     }
 
     throw error;

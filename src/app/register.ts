@@ -24,6 +24,10 @@ import {
 } from "../modules/foodOption";
 
 import authModule from "../modules/auth";
+import {
+  menuWeekRoutes,
+  staffMealPlanRoutes,
+} from "../modules/mealPlan/routes";
 import attendanceModule from "../modules/attendance";
 import sensiblePlugin from "../plugins/sensible";
 import errorHandler from "../plugins/error-handler";
@@ -96,6 +100,18 @@ export async function register(
     authModule,
     {
       prefix: "/api/v1",
+    },
+  );
+  await app.register(
+    staffMealPlanRoutes,
+    {
+      prefix: "/api/v1/meal-plan",
+    },
+  );
+  await app.register(
+    menuWeekRoutes,
+    {
+      prefix: "/api/v1/menu-weeks",
     },
   );
 

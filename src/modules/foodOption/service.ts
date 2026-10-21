@@ -1,3 +1,4 @@
+import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/error";
 
 import {
@@ -184,6 +185,20 @@ export class FoodOptionService {
   async delete(id: string) {
 
     await this.getById(id);
+
+
+    // Deleting would cascade-delete staff choices (and history)
+    const chosenBy =
+      await prisma.mealSelection.count({
+        where: { foodOptionId: id },
+      });
+
+    if (chosenBy > 0) {
+      throw new AppError(
+        409,
+        `This meal has been chosen by ${chosenBy} staff. Disable it instead of deleting.`,
+      );
+    }
 
 
     return this.repo.delete(id);

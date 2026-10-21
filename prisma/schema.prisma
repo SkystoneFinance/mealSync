@@ -24,15 +24,16 @@ model Staff {
   // Added for first-time activation/login
   phoneNumber String? @unique
 
-  qrCodeId String  @unique
-  qrImage  String
-  isActive Boolean @default(true)
+  qrCodeId          String  @unique
+  qrImage           String
+  isActive          Boolean @default(true)
   hasActivedAccount Boolean @default(false)
 
   // Relations
-  user        User?
-  attendances Attendance[]
-  selections  MealSelection[]
+  user              User?
+  attendances       Attendance[]
+  selections        MealSelection[]
+  weeklySubmissions WeeklySubmission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -97,12 +98,14 @@ model MealSelection {
   id String @id @default(uuid())
 
   staffId      String
-  foodOptionId String
+  // null when the staff member chose "No meal required" (noMeal = true)
+  foodOptionId String?
+  noMeal       Boolean  @default(false)
   mealDate     DateTime
 
   staff Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
-  foodOption FoodOption @relation(fields: [foodOptionId], references: [id], onDelete: Cascade)
+  foodOption FoodOption? @relation(fields: [foodOptionId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -112,4 +115,41 @@ model MealSelection {
   @@index([staffId])
   @@index([foodOptionId])
   @@index([mealDate])
+}
+
+// One row per menu week (Mon–Fri). Created when the chef first
+// marks closed days or publishes. Dates are UTC midnight (date only).
+model MenuWeek {
+  id String @id @default(uuid())
+
+  weekStart DateTime @unique // the Monday
+
+  // Days the kitchen is closed that week (no selection needed)
+  closedDates DateTime[]
+
+  publishedAt   DateTime?
+  publishedById String?
+
+  submissions WeeklySubmission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A staff member's submitted plan for a week. The individual day
+// choices live in MealSelection; this records when they submitted.
+model WeeklySubmission {
+  id String @id @default(uuid())
+
+  staffId    String
+  menuWeekId String
+
+  submittedAt DateTime @default(now()) // first submission
+  updatedAt   DateTime @updatedAt // last edit
+
+  staff    Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  menuWeek MenuWeek @relation(fields: [menuWeekId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, menuWeekId])
+  @@index([menuWeekId])
 }

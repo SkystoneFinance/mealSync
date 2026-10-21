@@ -9,6 +9,20 @@ Sections: **Added** · **Changed** · **Fixed** · **Removed** · **Security** �
 
 ## [Unreleased]
 
+### Added
+- **Weekly meal planning** (`src/modules/mealPlan`): staff choose next week's meals (a dish or "No meal required" per day) via `GET/PUT /meal-plan`. The chef marks closed days, publishes and views the Meal Preparation Summary (+ Excel) via `/menu-weeks/*`. Schedule: publish due Wed 17:00, staff deadline Thu 17:00, hidden close Thu 19:00 (Africa/Lagos).
+
+### Changed
+- Scanning refuses staff who chose "No meal required" for today.
+- Deleting a dish that someone has chosen is refused (409); disable it instead.
+- Validation errors now return 400 with the reason instead of 500. Fastify's own 4xx errors keep their status.
+
+### Removed
+- `POST /meal-selections`, `PATCH /meal-selections/:id`, `DELETE /meal-selections/:id` and the day-by-day lock (incl. the Monday exception). Also fixes anyone being able to edit anyone's selection by ID.
+
+### Database
+- Migration `20261021110013_weekly_meal_planning` (additive): `MealSelection.noMeal`, nullable `MealSelection.foodOptionId`, new `MenuWeek` and `WeeklySubmission` tables. **Apply to production before deploying.**
+
 ### Security
 - Staff management routes (`/staff`, except `/staff/me`) now require a SUPER_ADMIN token. Attendance, dashboard and reports routes require ADMIN or SUPER_ADMIN. Previously they were open to anyone.
 

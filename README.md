@@ -91,6 +91,18 @@ The frontend at `https://sky-meal-sync.vercel.app` calls this API. Allowed CORS 
 Env vars are managed in the Render dashboard → service → **Environment**. Changing one triggers a redeploy.
 Required there: `DATABASE_URL` (Neon production branch) and `JWT_SECRET`.
 
+### Database migrations on deploy
+
+Check whether the Render build command runs `npx prisma migrate deploy`. If it doesn't, apply new migrations to
+production **before** merging a PR that contains them. From your machine, with the production connection string:
+
+```bash
+DATABASE_URL="<production connection string>" npx prisma migrate deploy
+```
+
+Write migrations to be additive (new nullable columns / tables) so the currently deployed code keeps working
+until the new code is live.
+
 ## Contributing workflow
 
 1. Branch from `main` (`feature/...`, `fix/...`, `docs/...`).
