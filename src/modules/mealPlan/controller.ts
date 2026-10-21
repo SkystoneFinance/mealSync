@@ -36,10 +36,26 @@ export class MealPlanController {
   // =========================================
 
   async getMyPlan(
+    request: FastifyRequest<{
+      Querystring: { weekStart?: string };
+    }>,
+    reply: FastifyReply,
+  ) {
+    const { weekStart } = request.query;
+
+    const data = await this.service.getStaffPlan(
+      this.staffIdFrom(request),
+      weekStart ? parseWeekStart(weekStart) : undefined,
+    );
+
+    return reply.send({ success: true, data });
+  }
+
+  async getMyStatus(
     request: FastifyRequest,
     reply: FastifyReply,
   ) {
-    const data = await this.service.getStaffPlan(
+    const data = await this.service.getStaffStatus(
       this.staffIdFrom(request),
     );
 

@@ -4,7 +4,9 @@ import { AppError } from "../../utils/error";
 // WEEKLY MEAL PLANNING SCHEDULE
 // =========================================
 //
-// Staff choose meals for NEXT week (Mon–Fri). For a week starting on Monday M:
+// Staff choose meals ahead of time (Mon–Fri). The chef can publish next week
+// and the week after (PLANNING_WEEKS); staff can choose for either once it is
+// published, until that week's hard close. For a week starting on Monday M:
 //
 //   Tuesday   00:00  (M − 6d)  chef reminder banner starts (if not published)
 //   Wednesday 17:00  (M − 5d)  chef should have published the menu
@@ -34,8 +36,9 @@ export function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * DAY);
 }
 
-// UTC-midnight date for the current business (Lagos) calendar day
-function businessToday(now: Date) {
+// UTC-midnight date for the current business (Lagos) calendar day.
+// Use this for "today" on date-only columns (mealDate), never startOfDay().
+export function businessToday(now = new Date()) {
   const wall = new Date(
     now.getTime() + BUSINESS_UTC_OFFSET_HOURS * HOUR,
   );
@@ -49,12 +52,36 @@ function businessToday(now: Date) {
   );
 }
 
-// Monday of the week after the current business week
-export function nextWeekStart(now = new Date()) {
+// Monday of the current business (Lagos) week
+export function currentWeekStart(now = new Date()) {
   const today = businessToday(now);
   const daysSinceMonday = (today.getUTCDay() + 6) % 7;
 
-  return addDays(today, 7 - daysSinceMonday);
+  return addDays(today, -daysSinceMonday);
+}
+
+// Monday of the week after the current business week
+export function nextWeekStart(now = new Date()) {
+  return addDays(currentWeekStart(now), 7);
+}
+
+// How many weeks ahead the chef can publish and staff can choose
+export const PLANNING_WEEKS = 2;
+
+// Next week and the week after: the weeks that can be published/chosen
+export function planningWeeks(now = new Date()) {
+  const next = nextWeekStart(now);
+
+  return Array.from(
+    { length: PLANNING_WEEKS },
+    (_, i) => addDays(next, i * 7),
+  );
+}
+
+export function isPlanningWeek(weekStart: Date, now = new Date()) {
+  return planningWeeks(now).some(
+    (w) => w.getTime() === weekStart.getTime(),
+  );
 }
 
 // Instant at a Lagos wall-clock hour on the day `daysBefore` the week start

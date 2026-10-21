@@ -1,6 +1,6 @@
   export interface CreateFoodOptionDto {
     name: string;
-    image: string;
+    image?: string;
     mealDate: string;
   }
 

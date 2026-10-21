@@ -10,6 +10,21 @@ Sections: **Added** · **Changed** · **Fixed** · **Removed** · **Security** �
 ## [Unreleased]
 
 ### Added
+- Two planning weeks: the chef can publish next week and the week after; staff can choose for either once published.
+- `GET /meal-plan?weekStart=` for any week (read-only outside the open window) and `GET /meal-plan/status` for the two planning weeks.
+- Meal Preparation Summary for weeks chosen day by day before weekly planning (`isLegacy`).
+- `GET /attendance/today` includes the dish each person chose (`meal`).
+- **Our own dish photos**: `POST /food-options/:id/photo` (on or after the day), `GET /food-options/photo-status`, public `GET /dish-photos/:id/image`. A photo is stored per dish name and replaces the pasted image on every dish with that name; new dishes with a known name use it automatically, so `image` is now optional on create.
+
+### Database
+- Migration `20261021124226_dish_photos` (additive): `DishPhoto` table. **Apply to production before deploying.**
+
+### Fixed
+- Scanning, serving and the dashboard now use the Lagos calendar day instead of the server's time zone (`businessToday()` in `mealPlan/schedule.ts`), so they match how meal dates are stored.
+
+## 2026-10-21
+
+### Added
 - **Weekly meal planning** (`src/modules/mealPlan`): staff choose next week's meals (a dish or "No meal required" per day) via `GET/PUT /meal-plan`. The chef marks closed days, publishes and views the Meal Preparation Summary (+ Excel) via `/menu-weeks/*`. Schedule: publish due Wed 17:00, staff deadline Thu 17:00, hidden close Thu 19:00 (Africa/Lagos).
 
 ### Changed

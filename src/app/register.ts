@@ -25,6 +25,10 @@ import {
 
 import authModule from "../modules/auth";
 import {
+  dishPhotoAdminRoutes,
+  dishPhotoRoutes,
+} from "../modules/dishPhoto/routes";
+import {
   menuWeekRoutes,
   staffMealPlanRoutes,
 } from "../modules/mealPlan/routes";
@@ -100,6 +104,18 @@ export async function register(
     authModule,
     {
       prefix: "/api/v1",
+    },
+  );
+  await app.register(
+    dishPhotoRoutes,
+    {
+      prefix: "/api/v1/dish-photos",
+    },
+  );
+  await app.register(
+    dishPhotoAdminRoutes,
+    {
+      prefix: "/api/v1/food-options",
     },
   );
   await app.register(

@@ -1,4 +1,4 @@
-import { startOfDay } from "date-fns";
+import { businessToday } from "../mealPlan/schedule";
 
 import { prisma } from "../../config/prisma";
 
@@ -24,7 +24,7 @@ export class DashboardRepository {
       prisma.attendance.count({
         where: {
           mealDate: {
-            gte: startOfDay(new Date()),
+            gte: businessToday(),
           },
         },
       }),
@@ -42,7 +42,7 @@ export class DashboardRepository {
     return prisma.attendance.findMany({
       where: {
         mealDate: {
-          gte: startOfDay(new Date()),
+          gte: businessToday(),
         },
       },
       include: {

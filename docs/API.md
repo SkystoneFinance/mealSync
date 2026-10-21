@@ -60,7 +60,9 @@ Auth column legend: **Public** = no token checked · **Token** = any valid JWT �
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/food-options` | Admin | Create `{ name, image, mealDate }` — `image` is a string (URL or data-URL) |
+| POST | `/food-options` | Admin | Create `{ name, image?, mealDate }`. If we have our own photo for this dish name it is used automatically; otherwise `image` (any pasted URL) is required |
+| GET | `/food-options/photo-status` | Admin | Today's dishes with `hasOwnPhoto`, and `upcoming: { total, ownPhotos }` (switch-over progress) |
+| POST | `/food-options/:id/photo` | Admin | Multipart field `photo` (JPEG/PNG/WebP, ≤ 3 MB). Only on or after the dish's date. Saves it as our photo for that dish **name** and points every past and future dish with that name at it |
 | GET | `/food-options` | Token | All options |
 | GET | `/food-options/date?date=YYYY-MM-DD` | Token | Options for one day |
 | GET | `/food-options/summary?date=YYYY-MM-DD` | Token | Options for a day with `selectionCount` each + `totalSelections` (kitchen demand) |
@@ -71,13 +73,15 @@ Auth column legend: **Public** = no token checked · **Token** = any valid JWT �
 
 ## Weekly meal plan (staff): `src/modules/mealPlan`
 
-Always for **next week** (the Monday after the current Lagos week). Staff tokens only (403 for admin tokens).
+Staff can view any week read-only and choose for the two **planning weeks** (next week and the week after) once each is
+published, until that week's Thursday 19:00 close. Staff tokens only (403 for admin tokens).
 Schedule and rules: `schedule.ts` and frontend `docs/PRD.md` section 4.4.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/meal-plan` | Token (staff) | `{ week: { weekStart, deadline, isPublished, isOpen }, days: [{ date, closed, options[] }], selections[], submission }`. Options are hidden until published. |
-| PUT | `/meal-plan` | Token (staff) | Body `{ weekStart, selections: [{ date, foodOptionId } \| { date, noMeal: true }] }`. Must cover every open day exactly once. Replaces the week's choices and records/updates the submission. 409 if not published or after the Thursday 19:00 close. |
+| GET | `/meal-plan?weekStart=YYYY-MM-DD` | Token (staff) | Default: next week. `{ week: { weekStart, deadline, isPublished, isOpen, isLegacy, isPlanningWeek, isCurrentWeek }, days: [{ date, closed, options[] }], selections: [{ date, foodOptionId, noMeal, dish }], submission }`. Options are only returned while the week is open. `isLegacy` = not published through weekly planning (selections shown as-is). |
+| GET | `/meal-plan/status` | Token (staff) | The two planning weeks: `[{ weekStart, deadline, isPublished, isOpen, submittedAt }]` (staff banner) |
+| PUT | `/meal-plan` | Token (staff) | Body `{ weekStart, selections: [{ date, foodOptionId } \| { date, noMeal: true }] }`. `weekStart` must be a planning week. Must cover every open day exactly once. Replaces the week's choices and records/updates the submission. 409 if not published or after the Thursday 19:00 close. |
 
 ## Menu weeks (chef): `src/modules/mealPlan`
 
@@ -87,9 +91,9 @@ Schedule and rules: `schedule.ts` and frontend `docs/PRD.md` section 4.4.
 |---|---|---|---|
 | GET | `/menu-weeks/status` | Admin | Next week's state for dashboard banners: `showPublishReminder`, `isPublishOverdue`, `isConfirmed`, times |
 | GET | `/menu-weeks/:weekStart` | Admin | Schedule, publish state (`publishedLate`), days with all options |
-| PUT | `/menu-weeks/:weekStart/closed-days` | Admin | `{ dates: [] }`: kitchen-closed days. Only before publishing. |
-| POST | `/menu-weeks/:weekStart/publish` | Admin | Publish. Every open day needs ≥1 active option. Once only; not after close. |
-| GET | `/menu-weeks/:weekStart/summary` | Admin | Meal Preparation Summary (totals, per-day counts, submitted with times, not submitted) |
+| PUT | `/menu-weeks/:weekStart/closed-days` | Admin | `{ dates: [] }`: kitchen-closed days. Planning weeks only, before publishing. |
+| POST | `/menu-weeks/:weekStart/publish` | Admin | Publish next week or the week after. Every open day needs ≥1 active option. Once only; not after close. |
+| GET | `/menu-weeks/:weekStart/summary` | Admin | Meal Preparation Summary for any week (totals, per-day counts, submitted with times, not submitted). For weeks chosen day by day before weekly planning (`isLegacy`), every selection counts and the first selection time stands in for the submission time. |
 | GET | `/menu-weeks/:weekStart/summary/export` | Admin | Same as `.xlsx` (3 sheets) |
 
 ## Meal selections (read-only): `src/modules/mealSelection`
@@ -107,7 +111,7 @@ The old `POST`/`PATCH`/`DELETE /meal-selections` endpoints (day-by-day lock) wer
 |---|---|---|---|
 | POST | `/attendance/scan` | Admin | `{ qrCodeId }` → **preview only**: staff, today's selected meal, servings used/remaining. Errors if QR invalid, staff inactive, no meal selected, "No meal required" chosen, or limit reached. |
 | POST | `/attendance/serve` | Admin | `{ staffId }` → creates an `Attendance` row (in a transaction with retries), emits socket event `attendance:new` |
-| GET | `/attendance/today` | Admin | Today's attendance |
+| GET | `/attendance/today` | Admin | Today's servings, newest first, each with `staff` and `meal` (the dish they chose for today, or null) |
 | GET | `/attendance/history` | Admin | All attendance |
 | GET | `/attendance/staff/:staffId` | Admin | One staff member's attendance (404 if none) |
 
@@ -133,6 +137,15 @@ Weeks start on **Monday**.
 | GET | `/reports/departments` | Admin | By department |
 | GET | `/reports/staff-summary?period=today\|weekly\|monthly` | Admin | Per-staff meal counts (default `today`) |
 | GET | `/reports/export?period=` | Admin | `.xlsx` download. `period` = `today` \| `current-week` \| `previous-week` \| `current-month` \| `previous-month` |
+
+## Dish photos: `src/modules/dishPhoto`
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/dish-photos/:id/image` | Public | The photo bytes (for `<img>`; cached for a year, URLs carry a `?v=` version) |
+
+Dishes using our photo have `image` = `/api/v1/dish-photos/<id>/image?v=…`; the frontend prefixes the API origin.
+Names are matched case- and punctuation-insensitively (`&` = "and").
 
 ## Real-time events (Socket.IO)
 

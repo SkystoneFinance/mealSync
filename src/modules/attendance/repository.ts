@@ -1,13 +1,11 @@
-import {
-  addDays,
-  startOfDay,
-} from "date-fns";
+import { addDays } from "date-fns";
 
 import {
   Prisma,
 } from "@prisma/client";
 
 import { prisma } from "../../config/prisma";
+import { businessToday } from "../mealPlan/schedule";
 import { MAX_DAILY_SERVINGS } from "./constants";
 
 const staffSelect = {
@@ -52,7 +50,7 @@ export class AttendanceRepository {
   // =========================================
 
   async findTodayMealSelection(staffId: string) {
-    const today = startOfDay(new Date());
+    const today = businessToday();
 
     return prisma.mealSelection.findUnique({
       where: {
@@ -72,7 +70,7 @@ export class AttendanceRepository {
   // =========================================
 
   async countStaffServingsToday(staffId: string) {
-    const today = startOfDay(new Date());
+    const today = businessToday();
 
     return prisma.attendance.count({
       where: {
@@ -99,9 +97,7 @@ export class AttendanceRepository {
       try {
         return await prisma.$transaction(
           async (tx) => {
-            const today = startOfDay(
-              new Date(),
-            );
+            const today = businessToday();
 
             const servedCount =
               await tx.attendance.count({
@@ -200,9 +196,9 @@ export class AttendanceRepository {
   // =========================================
 
   async findTodayAttendance() {
-    const today = startOfDay(new Date());
+    const today = businessToday();
 
-    return prisma.attendance.findMany({
+    const attendance = await prisma.attendance.findMany({
       where: {
         mealDate: {
           gte: today,
@@ -220,6 +216,31 @@ export class AttendanceRepository {
         scannedAt: "desc",
       },
     });
+
+    // Attendance has no link to the dish; it's the staff member's
+    // selection for the same day
+    const selections = await prisma.mealSelection.findMany({
+      where: {
+        mealDate: today,
+        staffId: {
+          in: [...new Set(attendance.map((a) => a.staffId))],
+        },
+      },
+      include: {
+        foodOption: {
+          select: { id: true, name: true, image: true },
+        },
+      },
+    });
+
+    const mealByStaff = new Map(
+      selections.map((s) => [s.staffId, s.foodOption]),
+    );
+
+    return attendance.map((a) => ({
+      ...a,
+      meal: mealByStaff.get(a.staffId) ?? null,
+    }));
   }
 
   // =========================================
@@ -269,7 +290,7 @@ export class AttendanceRepository {
   // =========================================
 
   async countToday() {
-    const today = startOfDay(new Date());
+    const today = businessToday();
 
     return prisma.attendance.count({
       where: {
@@ -286,7 +307,7 @@ export class AttendanceRepository {
   // =========================================
 
   async findRecent(limit = 10) {
-    const today = startOfDay(new Date());
+    const today = businessToday();
 
     return prisma.attendance.findMany({
       where: {

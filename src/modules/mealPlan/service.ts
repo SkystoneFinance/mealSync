@@ -4,8 +4,12 @@ import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/error";
 
 import {
+  currentWeekStart,
   dayLabel,
+  isPlanningWeek,
   nextWeekStart,
+  parseWeekStart,
+  planningWeeks,
   toDateKey,
   weekSchedule,
 } from "./schedule";
@@ -23,7 +27,52 @@ const staffSelect = {
 // A submission edited more than a minute after it was first made
 const EDIT_THRESHOLD_MS = 60 * 1000;
 
+type LegacySelection = {
+  staffId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  staff: {
+    id: string;
+    staffNumber: string;
+    firstName: string;
+    lastName: string;
+    department: string;
+  };
+};
+
 export class MealPlanService {
+  // First and last selection per staff member in a legacy week
+  private legacySubmissions(selections: LegacySelection[]) {
+    const byStaff = new Map<
+      string,
+      {
+        staff: LegacySelection["staff"];
+        submittedAt: Date;
+        updatedAt: Date;
+      }
+    >();
+
+    for (const s of selections) {
+      const entry = byStaff.get(s.staffId);
+
+      if (!entry) {
+        byStaff.set(s.staffId, {
+          staff: s.staff,
+          submittedAt: s.createdAt,
+          updatedAt: s.updatedAt,
+        });
+        continue;
+      }
+
+      if (s.createdAt < entry.submittedAt) entry.submittedAt = s.createdAt;
+      if (s.updatedAt > entry.updatedAt) entry.updatedAt = s.updatedAt;
+    }
+
+    return [...byStaff.values()].sort(
+      (a, b) => a.submittedAt.getTime() - b.submittedAt.getTime(),
+    );
+  }
+
   // =========================================
   // SHARED
   // =========================================
@@ -62,21 +111,33 @@ export class MealPlanService {
   }
 
   // =========================================
-  // STAFF: NEXT WEEK'S PLAN
+  // STAFF: A WEEK'S PLAN (any week; editable only while open)
   // =========================================
 
-  async getStaffPlan(staffId: string) {
-    const weekStart = nextWeekStart();
-    const schedule = weekSchedule(weekStart);
+  async getStaffPlan(
+    staffId: string,
+    weekStart: Date = nextWeekStart(),
+  ) {
+    const now = new Date();
+    const schedule = weekSchedule(weekStart, now);
     const week = await this.findWeek(weekStart);
 
     const isPublished = Boolean(week?.publishedAt);
+    const isOpen =
+      isPublished &&
+      !schedule.isClosed &&
+      isPlanningWeek(weekStart, now);
+
+    // Weeks before weekly planning existed (or never published) still
+    // have per-day selections; show them read-only.
+    const isLegacy = !isPublished;
+
     const closedDates = week?.closedDates ?? [];
 
     const [options, selections, submission] =
       await Promise.all([
-        // Don't reveal the menu before it is published
-        isPublished
+        // The menu is only revealed while the week is open for choosing
+        isOpen
           ? this.activeOptionsForWeek(schedule.days)
           : Promise.resolve([]),
 
@@ -85,6 +146,7 @@ export class MealPlanService {
             staffId,
             mealDate: { in: schedule.days },
           },
+          include: { foodOption: true },
         }),
 
         week
@@ -99,12 +161,20 @@ export class MealPlanService {
           : Promise.resolve(null),
       ]);
 
+    // In a published week only a submitted plan counts
+    const visibleSelections =
+      submission || isLegacy ? selections : [];
+
     return {
       week: {
         weekStart: toDateKey(weekStart),
         deadline: schedule.deadline,
         isPublished,
-        isOpen: isPublished && !schedule.isClosed,
+        isOpen,
+        isLegacy,
+        isPlanningWeek: isPlanningWeek(weekStart, now),
+        isCurrentWeek:
+          weekStart.getTime() === currentWeekStart(now).getTime(),
       },
 
       days: schedule.days.map((day) => ({
@@ -121,14 +191,15 @@ export class MealPlanService {
           })),
       })),
 
-      // Only a submitted plan counts; stray rows are ignored
-      selections: submission
-        ? selections.map((s) => ({
-            date: toDateKey(s.mealDate),
-            foodOptionId: s.foodOptionId,
-            noMeal: s.noMeal,
-          }))
-        : [],
+      selections: visibleSelections.map((s) => ({
+        date: toDateKey(s.mealDate),
+        foodOptionId: s.foodOptionId,
+        noMeal: s.noMeal,
+        // For read-only display of past choices
+        dish: s.foodOption
+          ? { name: s.foodOption.name, image: s.foodOption.image }
+          : null,
+      })),
 
       submission: submission
         ? {
@@ -139,14 +210,46 @@ export class MealPlanService {
     };
   }
 
+  // Next week and the week after: published? open? submitted?
+  async getStaffStatus(staffId: string) {
+    const now = new Date();
+    const weekStarts = planningWeeks(now);
+
+    const weeks = await prisma.menuWeek.findMany({
+      where: { weekStart: { in: weekStarts } },
+      include: {
+        submissions: {
+          where: { staffId },
+          select: { submittedAt: true },
+        },
+      },
+    });
+
+    return weekStarts.map((weekStart) => {
+      const schedule = weekSchedule(weekStart, now);
+      const week = weeks.find(
+        (w) => w.weekStart.getTime() === weekStart.getTime(),
+      );
+      const isPublished = Boolean(week?.publishedAt);
+
+      return {
+        weekStart: toDateKey(weekStart),
+        deadline: schedule.deadline,
+        isPublished,
+        isOpen: isPublished && !schedule.isClosed,
+        submittedAt: week?.submissions[0]?.submittedAt ?? null,
+      };
+    });
+  }
+
   async submitStaffPlan(
     staffId: string,
     weekStartKey: string,
     input: DaySelectionInput[],
   ) {
-    const weekStart = nextWeekStart();
+    const weekStart = parseWeekStart(weekStartKey);
 
-    if (weekStartKey !== toDateKey(weekStart)) {
+    if (!isPlanningWeek(weekStart)) {
       throw new AppError(
         409,
         "Meal selection is closed for this week.",
@@ -159,7 +262,7 @@ export class MealPlanService {
     if (!week?.publishedAt) {
       throw new AppError(
         409,
-        "Next week's menu has not been published yet.",
+        "The menu for this week has not been published yet.",
       );
     }
 
@@ -167,7 +270,7 @@ export class MealPlanService {
     if (schedule.isClosed) {
       throw new AppError(
         409,
-        "Meal selection for next week has closed.",
+        "Meal selection for this week has closed.",
       );
     }
 
@@ -316,6 +419,8 @@ export class MealPlanService {
       deadline: schedule.deadline,
       hardClose: schedule.hardClose,
       isClosed: schedule.isClosed,
+      // Only next week and the week after can be edited/published
+      isPlanningWeek: isPlanningWeek(weekStart),
       isPublished: Boolean(week?.publishedAt),
       publishedAt: week?.publishedAt ?? null,
       publishedLate: Boolean(
@@ -344,6 +449,13 @@ export class MealPlanService {
     weekStart: Date,
     dateKeys: string[],
   ) {
+    if (!isPlanningWeek(weekStart)) {
+      throw new AppError(
+        409,
+        "You can only plan next week or the week after.",
+      );
+    }
+
     const schedule = weekSchedule(weekStart);
     const existing = await this.findWeek(weekStart);
 
@@ -379,6 +491,13 @@ export class MealPlanService {
   }
 
   async publish(weekStart: Date, userId: string) {
+    if (!isPlanningWeek(weekStart)) {
+      throw new AppError(
+        409,
+        "You can only plan next week or the week after.",
+      );
+    }
+
     const schedule = weekSchedule(weekStart);
 
     if (schedule.isClosed) {
@@ -440,6 +559,7 @@ export class MealPlanService {
     const schedule = weekSchedule(weekStart);
     const week = await this.findWeek(weekStart);
     const closedDates = week?.closedDates ?? [];
+    const isPublished = Boolean(week?.publishedAt);
 
     const [activeStaff, submissions, options] =
       await Promise.all([
@@ -455,7 +575,7 @@ export class MealPlanService {
           ],
         }),
 
-        week
+        week && isPublished
           ? prisma.weeklySubmission.findMany({
               where: {
                 menuWeekId: week.id,
@@ -472,16 +592,33 @@ export class MealPlanService {
         }),
       ]);
 
-    const submitterIds = submissions.map((s) => s.staffId);
+    // Published week: only submitted plans count.
+    // Legacy week (chosen day by day before weekly planning): every
+    // selection counts, and the first one stands in for the submission.
+    const selections = await prisma.mealSelection.findMany({
+      where: {
+        mealDate: { in: schedule.days },
+        staff: { isActive: true },
+        ...(isPublished
+          ? { staffId: { in: submissions.map((s) => s.staffId) } }
+          : {}),
+      },
+      include: isPublished
+        ? undefined
+        : { staff: { select: staffSelect } },
+    });
 
-    const selections = submitterIds.length
-      ? await prisma.mealSelection.findMany({
-          where: {
-            staffId: { in: submitterIds },
-            mealDate: { in: schedule.days },
-          },
-        })
-      : [];
+    const submitted = isPublished
+      ? submissions.map((s) => ({
+          staff: s.staff,
+          submittedAt: s.submittedAt,
+          updatedAt: s.updatedAt,
+        }))
+      : this.legacySubmissions(
+          selections as unknown as LegacySelection[],
+        );
+
+    const submitterIds = submitted.map((s) => s.staff.id);
 
     const notSubmitted = activeStaff.filter(
       (s) => !submitterIds.includes(s.id),
@@ -525,19 +662,21 @@ export class MealPlanService {
       weekStart: toDateKey(weekStart),
       deadline: schedule.deadline,
       hardClose: schedule.hardClose,
-      isPublished: Boolean(week?.publishedAt),
+      isPublished,
       publishedAt: week?.publishedAt ?? null,
-      isConfirmed: Boolean(week?.publishedAt) && schedule.isClosed,
+      isConfirmed: isPublished && schedule.isClosed,
+      // Chosen day by day before weekly planning existed
+      isLegacy: !isPublished && selections.length > 0,
 
       totals: {
         activeStaff: activeStaff.length,
-        submitted: submissions.length,
+        submitted: submitted.length,
         notSubmitted: notSubmitted.length,
       },
 
       days,
 
-      submitted: submissions.map((s) => ({
+      submitted: submitted.map((s) => ({
         ...s.staff,
         submittedAt: s.submittedAt,
         updatedAt: s.updatedAt,

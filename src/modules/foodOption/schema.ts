@@ -5,9 +5,11 @@ export const createFoodOptionSchema = z.object({
     .string()
     .min(2, "Food name is required"),
 
+  // Optional when we already have our own photo of a dish with this name
   image: z
     .string()
-    .min(1, "Food image is required"),
+    .trim()
+    .optional(),
 
   mealDate: z
     .string()

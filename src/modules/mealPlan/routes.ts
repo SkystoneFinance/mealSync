@@ -18,10 +18,17 @@ export async function staffMealPlanRoutes(
 ) {
   app.addHook("preHandler", authenticate);
 
-  // Next week's menu, my choices and submission status
-  app.get("/", controller.getMyPlan.bind(controller));
+  // A week's menu, my choices and submission status
+  // (?weekStart=YYYY-MM-DD, default next week; past weeks read-only)
+  app.get<{ Querystring: { weekStart?: string } }>(
+    "/",
+    controller.getMyPlan.bind(controller),
+  );
 
-  // Submit or edit my plan for next week
+  // Next week and the week after: published / open / submitted
+  app.get("/status", controller.getMyStatus.bind(controller));
+
+  // Submit or edit my plan for an open week
   app.put("/", controller.submitMyPlan.bind(controller));
 }
 
