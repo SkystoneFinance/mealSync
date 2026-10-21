@@ -10,22 +10,9 @@ const controller =
 export async function mealSelectionRoutes(
   app: FastifyInstance,
 ) {
-  // =========================================
-  // CREATE MEAL SELECTION
-  // =========================================
-
-  app.post<{
-    Body: {
-      foodOptionId: string;
-      mealDate: string;
-    };
-  }>(
-    "/",
-    {
-      preHandler: authenticate,
-    },
-    controller.create.bind(controller),
-  );
+  // Creating, changing and deleting selections now happens only
+  // through PUT /meal-plan (weekly submission window). The old
+  // per-day write endpoints were removed.
 
   // =========================================
   // GET MY MEAL SELECTIONS
@@ -57,40 +44,5 @@ export async function mealSelectionRoutes(
     controller.findMySelectionByDate.bind(
       controller,
     ),
-  );
-
-  // =========================================
-  // UPDATE SELECTION
-  // =========================================
-
-  app.patch<{
-    Params: {
-      id: string;
-    };
-    Body: {
-      foodOptionId: string;
-    };
-  }>(
-    "/:id",
-    {
-      preHandler: authenticate,
-    },
-    controller.update.bind(controller),
-  );
-
-  // =========================================
-  // DELETE SELECTION
-  // =========================================
-
-  app.delete<{
-    Params: {
-      id: string;
-    };
-  }>(
-    "/:id",
-    {
-      preHandler: authenticate,
-    },
-    controller.delete.bind(controller),
   );
 }

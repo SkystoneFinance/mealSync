@@ -40,17 +40,8 @@ export class AttendanceService {
       );
     }
 
-    const mealSelection =
-      await this.repository.findTodayMealSelection(
-        staff.id,
-      );
-
-    if (!mealSelection) {
-      throw new AppError(
-        409,
-        `${staff.firstName} ${staff.lastName} has not selected a meal for today.`,
-      );
-    }
+    const { mealSelection, foodOption } =
+      await this.getTodayMeal(staff);
 
     const servedCount =
       await this.repository.countStaffServingsToday(
@@ -78,9 +69,9 @@ export class AttendanceService {
       },
 
       meal: {
-        id: mealSelection.foodOption.id,
-        name: mealSelection.foodOption.name,
-        image: mealSelection.foodOption.image,
+        id: foodOption.id,
+        name: foodOption.name,
+        image: foodOption.image,
       },
 
       serving: {
@@ -118,17 +109,8 @@ export class AttendanceService {
       );
     }
 
-    const mealSelection =
-      await this.repository.findTodayMealSelection(
-        staff.id,
-      );
-
-    if (!mealSelection) {
-      throw new AppError(
-        409,
-        `${staff.firstName} ${staff.lastName} has not selected a meal for today.`,
-      );
-    }
+    const { mealSelection, foodOption } =
+      await this.getTodayMeal(staff);
 
     const result =
       await this.repository
@@ -158,9 +140,9 @@ export class AttendanceService {
       },
 
       meal: {
-        id: mealSelection.foodOption.id,
-        name: mealSelection.foodOption.name,
-        image: mealSelection.foodOption.image,
+        id: foodOption.id,
+        name: foodOption.name,
+        image: foodOption.image,
       },
 
       servingNumber:
@@ -187,9 +169,9 @@ export class AttendanceService {
       },
 
       meal: {
-        id: mealSelection.foodOption.id,
-        name: mealSelection.foodOption.name,
-        image: mealSelection.foodOption.image,
+        id: foodOption.id,
+        name: foodOption.name,
+        image: foodOption.image,
       },
 
       attendance: {
@@ -205,6 +187,43 @@ export class AttendanceService {
         maxDailyServings:
           MAX_DAILY_SERVINGS,
       },
+    };
+  }
+
+  // =========================================
+  // TODAY'S CHOSEN MEAL (or refuse to serve)
+  // =========================================
+
+  private async getTodayMeal(staff: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  }) {
+    const mealSelection =
+      await this.repository.findTodayMealSelection(
+        staff.id,
+      );
+
+    if (!mealSelection) {
+      throw new AppError(
+        409,
+        `${staff.firstName} ${staff.lastName} has not selected a meal for today.`,
+      );
+    }
+
+    if (
+      mealSelection.noMeal ||
+      !mealSelection.foodOption
+    ) {
+      throw new AppError(
+        409,
+        `${staff.firstName} ${staff.lastName} chose "No meal required" for today.`,
+      );
+    }
+
+    return {
+      mealSelection,
+      foodOption: mealSelection.foodOption,
     };
   }
 

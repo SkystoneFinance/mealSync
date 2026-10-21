@@ -4,8 +4,9 @@ Base path: **`/api/v1`**. Interactive Swagger UI is served at **`/docs`** when t
 (e.g. `http://localhost:5000/docs`).
 
 All JSON responses follow the shape `{ success: boolean, message?: string, data?: ..., token?: ... }`.
-Errors thrown as `AppError` return `{ success: false, message }` with the matching status code;
-anything else returns `500 Internal Server Error` (see `src/plugins/error-handler.ts`).
+Errors thrown as `AppError` (including Zod validation failures, as 400) return `{ success: false, message }` with the
+matching status code. Fastify's own 4xx errors (e.g. malformed JSON) keep their status. Anything else returns
+`500 Internal Server Error` (see `src/plugins/error-handler.ts`).
 
 ## Authentication
 
@@ -66,29 +67,45 @@ Auth column legend: **Public** = no token checked · **Token** = any valid JWT �
 | GET | `/food-options/:id` | Token | One option |
 | PATCH | `/food-options/:id` | Admin | Update name / image / mealDate |
 | PATCH | `/food-options/:id/status` | Admin | `{ isActive }` — inactive options can't be selected |
-| DELETE | `/food-options/:id` | Admin | Delete (cascades to selections) |
+| DELETE | `/food-options/:id` | Admin | Delete. 409 if anyone has chosen it (disable it instead) |
 
-## Meal selections — `src/modules/mealSelection`
+## Weekly meal plan (staff): `src/modules/mealPlan`
 
-The staff ID is taken from the JWT (`staffId ?? id`).
+Always for **next week** (the Monday after the current Lagos week). Staff tokens only (403 for admin tokens).
+Schedule and rules: `schedule.ts` and frontend `docs/PRD.md` section 4.4.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/meal-selections` | Token | `{ foodOptionId, mealDate }` — one selection per staff per day |
-| GET | `/meal-selections/my` | Token | All my selections |
-| GET | `/meal-selections/my/date?date=` | Token | My selection for a date |
-| PATCH | `/meal-selections/:id` | Token | Change food `{ foodOptionId }` |
-| DELETE | `/meal-selections/:id` | Token | Remove selection |
+| GET | `/meal-plan` | Token (staff) | `{ week: { weekStart, deadline, isPublished, isOpen }, days: [{ date, closed, options[] }], selections[], submission }`. Options are hidden until published. |
+| PUT | `/meal-plan` | Token (staff) | Body `{ weekStart, selections: [{ date, foodOptionId } \| { date, noMeal: true }] }`. Must cover every open day exactly once. Replaces the week's choices and records/updates the submission. 409 if not published or after the Thursday 19:00 close. |
 
-**Lock rule** (`service.ts → validateMealDateIsEditable`): a selection can be created/changed/deleted only for
-dates **after today**. Exception: **on a Monday, today's (Monday's) selection is still editable.**
-Food option must be `isActive`. ⚠️ PATCH/DELETE do not check that the selection belongs to the caller.
+## Menu weeks (chef): `src/modules/mealPlan`
+
+`:weekStart` is a Monday, `YYYY-MM-DD`.
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/menu-weeks/status` | Admin | Next week's state for dashboard banners: `showPublishReminder`, `isPublishOverdue`, `isConfirmed`, times |
+| GET | `/menu-weeks/:weekStart` | Admin | Schedule, publish state (`publishedLate`), days with all options |
+| PUT | `/menu-weeks/:weekStart/closed-days` | Admin | `{ dates: [] }`: kitchen-closed days. Only before publishing. |
+| POST | `/menu-weeks/:weekStart/publish` | Admin | Publish. Every open day needs ≥1 active option. Once only; not after close. |
+| GET | `/menu-weeks/:weekStart/summary` | Admin | Meal Preparation Summary (totals, per-day counts, submitted with times, not submitted) |
+| GET | `/menu-weeks/:weekStart/summary/export` | Admin | Same as `.xlsx` (3 sheets) |
+
+## Meal selections (read-only): `src/modules/mealSelection`
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/meal-selections/my` | Token | All my selections (`foodOption` is null when `noMeal` is true) |
+| GET | `/meal-selections/my/date?date=` | Token | My selection for a date |
+
+The old `POST`/`PATCH`/`DELETE /meal-selections` endpoints (day-by-day lock) were **removed** on 2026-10-21. Use `PUT /meal-plan`.
 
 ## Attendance (serving / scanning) — `src/modules/attendance`
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/attendance/scan` | Admin | `{ qrCodeId }` → **preview only**: staff, today's selected meal, servings used/remaining. Errors if QR invalid, staff inactive, no meal selected, or limit reached. |
+| POST | `/attendance/scan` | Admin | `{ qrCodeId }` → **preview only**: staff, today's selected meal, servings used/remaining. Errors if QR invalid, staff inactive, no meal selected, "No meal required" chosen, or limit reached. |
 | POST | `/attendance/serve` | Admin | `{ staffId }` → creates an `Attendance` row (in a transaction with retries), emits socket event `attendance:new` |
 | GET | `/attendance/today` | Admin | Today's attendance |
 | GET | `/attendance/history` | Admin | All attendance |

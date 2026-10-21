@@ -14,6 +14,7 @@
 Staff 1 ──── 0..1 User            (login account; admins have no Staff)
 Staff 1 ──── *    MealSelection * ──── 1 FoodOption
 Staff 1 ──── *    Attendance        (one row per meal served)
+Staff 1 ──── *    WeeklySubmission * ──── 1 MenuWeek
 ```
 
 ## Tables
@@ -45,10 +46,28 @@ Staff 1 ──── *    Attendance        (one row per meal served)
 | `mealDate` | The day it's offered |
 | `isActive` | Inactive options can't be selected |
 
-### `MealSelection` — a staff member's pre-order for a day
+### `MealSelection` — a staff member's choice for a day
 | Field | Notes |
 |---|---|
-| `staffId`, `foodOptionId`, `mealDate` | **Unique on (`staffId`, `mealDate`)** — one choice per person per day |
+| `staffId`, `mealDate` | **Unique on (`staffId`, `mealDate`)**: one choice per person per day |
+| `foodOptionId` | The dish, or `null` when `noMeal` is true |
+| `noMeal` | Staff chose "No meal required" |
+
+Written only by `PUT /meal-plan`. Rows only count for a week if the staff member has a `WeeklySubmission` for it.
+
+### `MenuWeek` — one row per planned week
+| Field | Notes |
+|---|---|
+| `weekStart` | The Monday (UTC midnight). Unique |
+| `closedDates` | Days the kitchen is closed |
+| `publishedAt`, `publishedById` | Set when the chef publishes; staff can only choose after this |
+
+### `WeeklySubmission` — a staff member submitted their plan for a week
+| Field | Notes |
+|---|---|
+| `staffId`, `menuWeekId` | Unique together |
+| `submittedAt` | First submission (the time shown in the chef summary) |
+| `updatedAt` | Last edit |
 
 ### `Attendance` — a meal actually served
 | Field | Notes |
@@ -67,7 +86,7 @@ and users are in another zone, the day boundary is shifted. Keep the server TZ a
 ## Migrations
 
 History in `prisma/migrations/` (oldest first): init → staff schema → mealsyncs → QR image → auth →
-food selection → food option meal date → staff phone/OTP → remove OTP, add activation status.
+food selection → food option meal date → staff phone/OTP → remove OTP, add activation status → **weekly meal planning** (2026-10-21: `noMeal`, nullable `foodOptionId`, `MenuWeek`, `WeeklySubmission`; additive only).
 
 | Task | Command |
 |---|---|
