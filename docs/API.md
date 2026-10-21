@@ -122,8 +122,7 @@ The old `POST`/`PATCH`/`DELETE /meal-selections` endpoints (day-by-day lock) wer
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET | `/dashboard` | Admin | `{ totalStaff, activeStaff, inactiveStaff, mealsServedToday }` |
-| GET | `/dashboard/recent-attendance` | Admin | Latest 10 servings |
-| GET | `/dashboard/department-summary` | Admin | Staff headcount per department |
+| GET | `/dashboard/recent-attendance` | Admin | Today's latest 10 servings, each with `staff` and `meal` (the dish served) |
 
 ## Reports — `src/modules/reports`
 
