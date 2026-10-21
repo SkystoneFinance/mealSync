@@ -16,8 +16,4 @@ export class DashboardService {
   async getRecentAttendance() {
     return this.repository.getRecentAttendance();
   }
-
-  async getDepartmentSummary() {
-    return this.repository.getDepartmentSummary();
-  }
 }

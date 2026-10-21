@@ -17,8 +17,3 @@ export type RecentAttendance = {
     department: string;
   };
 };
-
-export type DepartmentSummary = {
-  department: string;
-  total: number;
-};

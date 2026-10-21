@@ -29,17 +29,4 @@ export class DashboardController {
       data: recentAttendance,
     });
   }
-
-  async getDepartmentSummary(
-    _request: FastifyRequest,
-    reply: FastifyReply,
-  ) {
-    const departments =
-      await this.service.getDepartmentSummary();
-
-    return reply.send({
-      success: true,
-      data: departments,
-    });
-  }
 }

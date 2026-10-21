@@ -25,9 +25,4 @@ export async function dashboardRoutes(
     "/recent-attendance",
     controller.getRecentAttendance.bind(controller),
   );
-
-  app.get(
-    "/department-summary",
-    controller.getDepartmentSummary.bind(controller),
-  );
 }

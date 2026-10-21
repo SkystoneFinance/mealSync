@@ -39,36 +39,51 @@ export class DashboardRepository {
   }
 
   async getRecentAttendance(limit = 10) {
-    return prisma.attendance.findMany({
+    const today = businessToday();
+
+    const attendance = await prisma.attendance.findMany({
       where: {
         mealDate: {
-          gte: businessToday(),
+          gte: today,
         },
       },
       include: {
-        staff: true,
+        staff: {
+          select: {
+            id: true,
+            staffNumber: true,
+            firstName: true,
+            lastName: true,
+            department: true,
+          },
+        },
       },
       orderBy: {
         scannedAt: "desc",
       },
       take: limit,
     });
-  }
 
-  async getDepartmentSummary() {
-    const departments = await prisma.staff.groupBy({
-      by: ["department"],
-      _count: {
-        department: true,
+    // The dish served = the staff member's selection for today
+    const selections = await prisma.mealSelection.findMany({
+      where: {
+        mealDate: today,
+        staffId: { in: attendance.map((a) => a.staffId) },
       },
-      orderBy: {
-        department: "asc",
+      include: {
+        foodOption: {
+          select: { id: true, name: true, image: true },
+        },
       },
     });
 
-    return departments.map((item) => ({
-      department: item.department,
-      total: item._count.department,
+    const mealByStaff = new Map(
+      selections.map((s) => [s.staffId, s.foodOption]),
+    );
+
+    return attendance.map((a) => ({
+      ...a,
+      meal: mealByStaff.get(a.staffId) ?? null,
     }));
   }
 }
