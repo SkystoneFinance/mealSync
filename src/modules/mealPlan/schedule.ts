@@ -36,8 +36,9 @@ export function addDays(date: Date, days: number) {
   return new Date(date.getTime() + days * DAY);
 }
 
-// UTC-midnight date for the current business (Lagos) calendar day
-function businessToday(now: Date) {
+// UTC-midnight date for the current business (Lagos) calendar day.
+// Use this for "today" on date-only columns (mealDate), never startOfDay().
+export function businessToday(now = new Date()) {
   const wall = new Date(
     now.getTime() + BUSINESS_UTC_OFFSET_HOURS * HOUR,
   );

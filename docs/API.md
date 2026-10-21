@@ -109,7 +109,7 @@ The old `POST`/`PATCH`/`DELETE /meal-selections` endpoints (day-by-day lock) wer
 |---|---|---|---|
 | POST | `/attendance/scan` | Admin | `{ qrCodeId }` → **preview only**: staff, today's selected meal, servings used/remaining. Errors if QR invalid, staff inactive, no meal selected, "No meal required" chosen, or limit reached. |
 | POST | `/attendance/serve` | Admin | `{ staffId }` → creates an `Attendance` row (in a transaction with retries), emits socket event `attendance:new` |
-| GET | `/attendance/today` | Admin | Today's attendance |
+| GET | `/attendance/today` | Admin | Today's servings, newest first, each with `staff` and `meal` (the dish they chose for today, or null) |
 | GET | `/attendance/history` | Admin | All attendance |
 | GET | `/attendance/staff/:staffId` | Admin | One staff member's attendance (404 if none) |
 
