@@ -4,6 +4,7 @@ import { prisma } from "../../config/prisma";
 import { AppError } from "../../utils/error";
 
 import {
+  BUSINESS_UTC_OFFSET_HOURS,
   currentWeekStart,
   dayLabel,
   isPlanningWeek,
@@ -123,9 +124,16 @@ export class MealPlanService {
     const week = await this.findWeek(weekStart);
 
     const isPublished = Boolean(week?.publishedAt);
+
+    // An administrator may have reopened selection for this person
+    const reopenedUntil =
+      week && schedule.isClosed
+        ? await this.activeReopenUntil(staffId, week.id, now)
+        : null;
+
     const isOpen =
       isPublished &&
-      !schedule.isClosed &&
+      (!schedule.isClosed || Boolean(reopenedUntil)) &&
       isPlanningWeek(weekStart, now);
 
     // Weeks before weekly planning existed (or never published) still
@@ -168,7 +176,8 @@ export class MealPlanService {
     return {
       week: {
         weekStart: toDateKey(weekStart),
-        deadline: schedule.deadline,
+        deadline: reopenedUntil ?? schedule.deadline,
+        reopenedUntil,
         isPublished,
         isOpen,
         isLegacy,
@@ -222,6 +231,10 @@ export class MealPlanService {
           where: { staffId },
           select: { submittedAt: true },
         },
+        reopens: {
+          where: { staffId, expiresAt: { gt: now } },
+          select: { expiresAt: true },
+        },
       },
     });
 
@@ -231,12 +244,15 @@ export class MealPlanService {
         (w) => w.weekStart.getTime() === weekStart.getTime(),
       );
       const isPublished = Boolean(week?.publishedAt);
+      const reopenedUntil =
+        schedule.isClosed ? (week?.reopens[0]?.expiresAt ?? null) : null;
 
       return {
         weekStart: toDateKey(weekStart),
-        deadline: schedule.deadline,
+        deadline: reopenedUntil ?? schedule.deadline,
+        reopenedUntil,
         isPublished,
-        isOpen: isPublished && !schedule.isClosed,
+        isOpen: isPublished && (!schedule.isClosed || Boolean(reopenedUntil)),
         submittedAt: week?.submissions[0]?.submittedAt ?? null,
       };
     });
@@ -266,8 +282,12 @@ export class MealPlanService {
       );
     }
 
-    // The hidden hard close (Thursday 19:00), not the displayed deadline
-    if (schedule.isClosed) {
+    // The hidden hard close (Thursday 19:00), not the displayed deadline,
+    // unless an administrator reopened selection for this person
+    if (
+      schedule.isClosed &&
+      !(await this.activeReopenUntil(staffId, week.id))
+    ) {
       throw new AppError(
         409,
         "Meal selection for this week has closed.",
@@ -366,6 +386,88 @@ export class MealPlanService {
     return {
       submittedAt: submission.submittedAt,
       updatedAt: submission.updatedAt,
+    };
+  }
+
+  // =========================================
+  // LATE: REOPEN SELECTION FOR ONE PERSON
+  // =========================================
+
+  private async activeReopenUntil(
+    staffId: string,
+    menuWeekId: string,
+    now = new Date(),
+  ) {
+    const reopen = await prisma.submissionReopen.findUnique({
+      where: { staffId_menuWeekId: { staffId, menuWeekId } },
+    });
+
+    return reopen && reopen.expiresAt > now ? reopen.expiresAt : null;
+  }
+
+  // After the hard close, let one staff member (who missed it) choose.
+  // Lasts 24 hours, and never past the start of the week itself.
+  async reopenForStaff(
+    weekStart: Date,
+    staffId: string,
+    adminId: string,
+  ) {
+    const now = new Date();
+    const schedule = weekSchedule(weekStart, now);
+    const week = await this.findWeek(weekStart);
+
+    if (!week?.publishedAt) {
+      throw new AppError(409, "This week's menu hasn't been published.");
+    }
+
+    if (!schedule.isClosed) {
+      throw new AppError(
+        409,
+        "Selection is still open; they can submit as normal.",
+      );
+    }
+
+    // Monday 00:00 in Lagos
+    const weekBegins = new Date(
+      weekStart.getTime() - BUSINESS_UTC_OFFSET_HOURS * 60 * 60 * 1000,
+    );
+
+    if (now >= weekBegins) {
+      throw new AppError(
+        409,
+        "This week has already started, so choices can't be reopened.",
+      );
+    }
+
+    const staff = await prisma.staff.findUnique({
+      where: { id: staffId },
+    });
+
+    if (!staff?.isActive) {
+      throw new AppError(404, "Active staff member not found.");
+    }
+
+    const expiresAt = new Date(
+      Math.min(
+        now.getTime() + 24 * 60 * 60 * 1000,
+        weekBegins.getTime(),
+      ),
+    );
+
+    await prisma.submissionReopen.upsert({
+      where: { staffId_menuWeekId: { staffId, menuWeekId: week.id } },
+      create: {
+        staffId,
+        menuWeekId: week.id,
+        expiresAt,
+        createdById: adminId,
+      },
+      update: { expiresAt, createdById: adminId },
+    });
+
+    return {
+      expiresAt,
+      message: `Reopened for ${staff.firstName} ${staff.lastName} until ${expiresAt.toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos" })}.`,
     };
   }
 
@@ -624,6 +726,17 @@ export class MealPlanService {
       (s) => !submitterIds.includes(s.id),
     );
 
+    const now = new Date();
+    const reopens = week
+      ? await prisma.submissionReopen.findMany({
+          where: { menuWeekId: week.id, expiresAt: { gt: now } },
+          select: { staffId: true, expiresAt: true },
+        })
+      : [];
+    const reopenedUntil = new Map(
+      reopens.map((r) => [r.staffId, r.expiresAt]),
+    );
+
     const days = schedule.days.map((day) => {
       const closed = this.isClosedDay(closedDates, day);
 
@@ -680,6 +793,11 @@ export class MealPlanService {
         ...s.staff,
         submittedAt: s.submittedAt,
         updatedAt: s.updatedAt,
+        // Submitted or changed after selection closed (reopened)
+        late:
+          isPublished &&
+          (s.submittedAt > schedule.hardClose ||
+            s.updatedAt > schedule.hardClose),
         edited:
           s.updatedAt.getTime() - s.submittedAt.getTime() >
           EDIT_THRESHOLD_MS,
@@ -687,6 +805,7 @@ export class MealPlanService {
 
       notSubmitted: notSubmitted.map(({ user, ...s }) => ({
         ...s,
+        reopenedUntil: reopenedUntil.get(s.id) ?? null,
         // Never activated = has no login, so can't submit at all
         hasActivatedAccount: Boolean(user?.password),
       })),

@@ -25,6 +25,10 @@ import {
 
 import authModule from "../modules/auth";
 import {
+  pinResetAdminRoutes,
+  pinResetPublicRoutes,
+} from "../modules/pinReset/routes";
+import {
   dishPhotoAdminRoutes,
   dishPhotoRoutes,
 } from "../modules/dishPhoto/routes";
@@ -104,6 +108,18 @@ export async function register(
     authModule,
     {
       prefix: "/api/v1",
+    },
+  );
+  await app.register(
+    pinResetPublicRoutes,
+    {
+      prefix: "/api/v1/staff-auth",
+    },
+  );
+  await app.register(
+    pinResetAdminRoutes,
+    {
+      prefix: "/api/v1/staff",
     },
   );
   await app.register(

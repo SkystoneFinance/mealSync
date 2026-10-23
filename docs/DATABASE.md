@@ -64,6 +64,19 @@ Written only by `PUT /meal-plan`. Rows only count for a week if the staff member
 
 `FoodOption.image` holds either a pasted outside URL or `/api/v1/dish-photos/<id>/image?v=…` once we have a photo.
 
+### `PinResetRequest` — "Forgot your PIN?"
+| Field | Notes |
+|---|---|
+| `staffId` | Who asked |
+| `resolvedAt`, `resolvedById`, `resolution` | Set when an administrator resets (`reset`) or dismisses (`dismissed`) |
+
+### `SubmissionReopen` — late choice allowed for one person
+| Field | Notes |
+|---|---|
+| `staffId`, `menuWeekId` | Unique together |
+| `expiresAt` | Until when they can submit (24 h, never past the week's Monday 00:00 Lagos) |
+| `createdById` | Administrator who reopened |
+
 ### `MenuWeek` — one row per planned week
 | Field | Notes |
 |---|---|
@@ -95,7 +108,7 @@ and users are in another zone, the day boundary is shifted. Keep the server TZ a
 ## Migrations
 
 History in `prisma/migrations/` (oldest first): init → staff schema → mealsyncs → QR image → auth →
-food selection → food option meal date → staff phone/OTP → remove OTP, add activation status → **weekly meal planning** (2026-10-21: `noMeal`, nullable `foodOptionId`, `MenuWeek`, `WeeklySubmission`; additive only) → **dish photos** (`DishPhoto`, additive).
+food selection → food option meal date → staff phone/OTP → remove OTP, add activation status → **weekly meal planning** (2026-10-21: `noMeal`, nullable `foodOptionId`, `MenuWeek`, `WeeklySubmission`; additive only) → **dish photos** (`DishPhoto`, additive) → **PIN resets and reopens** (`PinResetRequest`, `SubmissionReopen`, additive).
 
 | Task | Command |
 |---|---|

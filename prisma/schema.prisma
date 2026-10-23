@@ -34,6 +34,8 @@ model Staff {
   attendances       Attendance[]
   selections        MealSelection[]
   weeklySubmissions WeeklySubmission[]
+  pinResetRequests  PinResetRequest[]
+  submissionReopens SubmissionReopen[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -131,6 +133,7 @@ model MenuWeek {
   publishedById String?
 
   submissions WeeklySubmission[]
+  reopens     SubmissionReopen[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -169,4 +172,39 @@ model DishPhoto {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// "Forgot your PIN?" from the sign-in page. An administrator resets the
+// PIN (clears it) or dismisses the request from the Staff page.
+model PinResetRequest {
+  id String @id @default(uuid())
+
+  staffId String
+  staff   Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime  @default(now())
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolution   String? // "reset" | "dismissed"
+
+  @@index([staffId])
+  @@index([resolvedAt])
+}
+
+// An administrator reopened meal selection for one staff member after the
+// week's hard close (they missed the deadline). Valid until expiresAt.
+model SubmissionReopen {
+  id String @id @default(uuid())
+
+  staffId    String
+  menuWeekId String
+
+  staff    Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  menuWeek MenuWeek @relation(fields: [menuWeekId], references: [id], onDelete: Cascade)
+
+  expiresAt   DateTime
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@unique([staffId, menuWeekId])
 }

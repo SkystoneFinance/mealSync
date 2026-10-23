@@ -24,6 +24,10 @@ export const submitPlanSchema = z.object({
   selections: z.array(daySelectionSchema).max(5),
 });
 
+export const reopenSchema = z.object({
+  staffId: z.string().uuid("Choose a staff member."),
+});
+
 export const closedDaysSchema = z.object({
   dates: z.array(dateKey).max(5),
 });

@@ -63,6 +63,13 @@ export async function menuWeekRoutes(
     controller.publish.bind(controller),
   );
 
+  // Let one staff member who missed the deadline choose (admins only)
+  app.post<WeekParams>(
+    "/:weekStart/reopen",
+    { preHandler: authorize("SUPER_ADMIN") },
+    controller.reopen.bind(controller),
+  );
+
   app.get<WeekParams>(
     "/:weekStart/summary",
     controller.summary.bind(controller),
