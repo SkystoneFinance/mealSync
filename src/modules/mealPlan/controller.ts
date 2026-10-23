@@ -9,6 +9,7 @@ import { AppError } from "../../utils/error";
 import { parseWeekStart } from "./schedule";
 import {
   closedDaysSchema,
+  reopenSchema,
   submitPlanSchema,
 } from "./schema";
 import { MealPlanService } from "./service";
@@ -139,6 +140,21 @@ export class MealPlanController {
       message: "Menu published. Staff can now choose their meals.",
       data,
     });
+  }
+
+  async reopen(
+    request: FastifyRequest<WeekParams>,
+    reply: FastifyReply,
+  ) {
+    const body = await validate(reopenSchema, request.body);
+
+    const data = await this.service.reopenForStaff(
+      parseWeekStart(request.params.weekStart),
+      body.staffId,
+      request.user.id,
+    );
+
+    return reply.send({ success: true, message: data.message, data });
   }
 
   async summary(

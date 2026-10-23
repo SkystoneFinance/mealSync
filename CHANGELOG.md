@@ -9,6 +9,14 @@ Sections: **Added** · **Changed** · **Fixed** · **Removed** · **Security** �
 
 ## [Unreleased]
 
+### Added
+- PIN resets: public `POST /staff-auth/pin-reset-request`; administrators list/dismiss requests and `POST /staff/:id/reset-pin` (clears the PIN). `GET /staff` includes `hasPin`.
+- `POST /menu-weeks/:weekStart/reopen` (administrators): lets one staff member choose after the deadline for 24 hours (never past the week's start). Staff plan/status show `reopenedUntil`; the summary flags `late` submissions and `reopenedUntil` for people not yet submitted.
+
+### Database
+- Migration `20261023102701_pin_resets_and_reopens` (additive): `PinResetRequest`, `SubmissionReopen`. **Apply to production before deploying.**
+
+
 ### Changed
 - `GET /dashboard/recent-attendance` includes the dish served (`meal`) and only the needed staff fields (no QR image).
 

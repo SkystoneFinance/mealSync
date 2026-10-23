@@ -14,11 +14,20 @@ export class StaffRepository {
   }
 
   async findAll() {
-    return prisma.staff.findMany({
+    const staff = await prisma.staff.findMany({
       orderBy: {
         createdAt: "desc",
       },
+      include: {
+        user: { select: { password: true } },
+      },
     });
+
+    // hasPin: has activated and can sign in (never expose the hash)
+    return staff.map(({ user, ...s }) => ({
+      ...s,
+      hasPin: Boolean(user?.password),
+    }));
   }
 
   async findByUserId(userId: string) {

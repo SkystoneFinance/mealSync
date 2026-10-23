@@ -43,6 +43,7 @@ Auth column legend: **Public** = no token checked · **Token** = any valid JWT �
 | POST | `/staff-auth/activate` | Public | First-time setup. Body `{ staffNumber, pin, confirmPin }` (4-digit numeric PIN). Creates/updates the linked `User` with a bcrypt-hashed PIN. 409 if already activated. |
 | POST | `/staff-auth/login` | Public | Body `{ staffNumber, pin }` → `{ token, user }` |
 | GET | `/staff-auth/me` | Token | Staff profile incl. QR image |
+| POST | `/staff-auth/pin-reset-request` | Public | `{ staffNumber }` — "Forgot your PIN?". Records a request for an administrator (one open request per person). Always returns the same message, so it doesn't reveal which staff numbers exist |
 
 ## Staff — `src/modules/staff`
 
@@ -50,7 +51,10 @@ Auth column legend: **Public** = no token checked · **Token** = any valid JWT �
 |---|---|---|---|
 | POST | `/staff` | Super | Create staff `{ staffNumber, firstName, lastName, department }`. Generates `qrCodeId` (UUID) and a QR PNG data-URL. |
 | POST | `/staff/import` | Super | Multipart `.xlsx` upload. Sheet 1, from row 2: col A staff number, B first name, C last name, D department. Duplicates / incomplete rows are skipped. Returns `{ imported, skipped }`. |
-| GET | `/staff` | Super | List all staff |
+| GET | `/staff` | Super | List all staff (with `hasPin`: activated and can sign in) |
+| GET | `/staff/pin-reset-requests` | Super | Open "Forgot your PIN?" requests with staff details |
+| POST | `/staff/pin-reset-requests/:id/dismiss` | Super | Close a request without resetting |
+| POST | `/staff/:id/reset-pin` | Super | Clear the PIN (they choose a new one via `/staff-auth/activate`) and close their open requests. PINs are hashed and can't be read |
 | GET | `/staff/me` | Token | Staff linked to the current user |
 | GET | `/staff/:id` | Super | One staff member |
 | PATCH | `/staff/:id` | Super | Update fields incl. `isActive` |
@@ -93,6 +97,7 @@ Schedule and rules: `schedule.ts` and frontend `docs/PRD.md` section 4.4.
 | GET | `/menu-weeks/:weekStart` | Admin | Schedule, publish state (`publishedLate`), days with all options |
 | PUT | `/menu-weeks/:weekStart/closed-days` | Admin | `{ dates: [] }`: kitchen-closed days. Planning weeks only, before publishing. |
 | POST | `/menu-weeks/:weekStart/publish` | Admin | Publish next week or the week after. Every open day needs ≥1 active option. Once only; not after close. |
+| POST | `/menu-weeks/:weekStart/reopen` | Super | `{ staffId }`: after the Thursday 19:00 close and before the week starts, let one staff member choose. Lasts 24 h (never past Monday 00:00). Their submission is flagged `late` in the summary |
 | GET | `/menu-weeks/:weekStart/summary` | Admin | Meal Preparation Summary for any week (totals, per-day counts, submitted with times, not submitted). For weeks chosen day by day before weekly planning (`isLegacy`), every selection counts and the first selection time stands in for the submission time. |
 | GET | `/menu-weeks/:weekStart/summary/export` | Admin | Same as `.xlsx` (3 sheets) |
 
